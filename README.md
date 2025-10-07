@@ -1,5 +1,5 @@
-# zTank
-Tank survey, embedded sofware on dedicated PCB using ESP32C6 µC
+# zVMC
+Driving ALDES controlled mechanical ventilation using Modbus, embedded sofware on dedicated PCB using ESP32C6 µC
 
 # Description
 
