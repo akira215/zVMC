@@ -96,6 +96,127 @@ git submodule add https://github.com/akira215/esp-ash-components.git components
 
 Create a partition.csv for zigbee and configure menuconfig with custom partition table (shall be done by default)
 
+## Remote USB over IP to debug
+
+### Server side using raspberry Pi
+
+Install package:
+
+```
+sudo apt install usbip
+```
+
+Install drivers and let them run at start:
+
+```
+sudo -i
+modprobe usbip_host
+echo 'usbip_host' >> /etc/modules
+```
+
+List usb devices:
+
+```
+usbip list -l
+```
+
+Create start and stop scripts:
+
+```
+nano /usr/sbin/usbip_start.sh
+```
+
+```
+#! /bin/bash
+
+usb1='303a:1001'
+# usb2='xxx'
+
+/usr/sbin/usbip bind --$(/usr/sbin/usbip list -p -l | grep '#usbid='$usb1'#' | cut '-d#' -f1)
+#/usr/sbin/usbip bind --$(/usr/sbin/usbip list -p -l | grep '#usbid='$usb2'#' | cut '-d#' -f1)
+
+```
+
+```
+nano /usr/sbin/usbip_stop.sh
+```
+
+```
+#! /bin/bash
+
+usb1='303a:1001'
+# usb2='xxx'
+
+/usr/sbin/usbip unbind --$(/usr/sbin/usbip list -p -l | grep '#usbid='$usb1'#' | cut '-d#' -f1)
+#/usr/sbin/usbip unbind --$(/usr/sbin/usbip list -p -l | grep '#usbid='$usb2'#' | cut '-d#' -f1)
+killall usbipd
+```
+
+Turn them executables:
+
+```
+chmod +x /usr/sbin/usbip_start.sh
+chmod +x /usr/sbin/usbip_stop.sh
+```
+
+Test the scripts:
+
+```
+. /usr/sbin/usbip_start.sh
+. /usr/sbin/usbip_stop.sh
+```
+
+Create a service:
+
+```
+nano /lib/systemd/system/usbipd.service
+```
+
+```
+[Unit]
+Description=usbip host daemon
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/sbin/usbipd -D
+ExecStartPost=/bin/sh -c '/usr/sbin/usbip_start.sh'
+ExecStop=/bin/sh -c '/usr/sbin/usbip_stop.sh'
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Start the service at boot:
+let system know about that service
+
+```
+systemctl --system daemon-reload
+```
+
+to start service at boot
+
+```
+systemctl enable usbipd.service
+```
+
+and start service, check status:
+
+```
+systemctl start usbipd.service
+systemctl status usbipd.service
+```
+
+### Client side Windows 11
+
+Create a restore point on the system
+
+Install OSSign release of https://github.com/vadimgrn/usbip-win2 :
+
+https://github.com/OSSign/vadimgrn--usbip-win2/releases
+
+run the GUI to find the device !
+
 ## Configuration
 
 Configuration is available in `menuconfig` in the `Project setting` section:
