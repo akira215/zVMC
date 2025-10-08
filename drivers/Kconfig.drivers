@@ -1,0 +1,114 @@
+menu "Modbus config"
+     config MB_UART_BAUD_RATE
+        int "UART communication speed"
+        range 1200 115200
+        default 9600
+        help
+            UART communication speed for Modbus.
+
+    config MB_UART_RXD
+        int "UART RXD pin number"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
+        default 17
+        help
+            GPIO number for UART RX pin.
+
+    config MB_UART_TXD
+        int "UART TXD pin number"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 16
+        help
+            GPIO number for UART TX pin.
+
+    config MB_UART_RTS
+        int "UART RTS pin number"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 19
+        help
+            GPIO number for UART RTS pin. This pin is connected to
+            ~RE/DE pin of RS485 transceiver to switch direction.
+
+
+    choice MB_COMM_MODE
+        prompt "Modbus communication mode"
+        default MB_COMM_MODE_RTU if CONFIG_FMB_COMM_MODE_RTU_EN
+        help
+            Selection of Modbus communication mode option for Modbus.
+
+        config MB_COMM_MODE_RTU
+            bool "RTU mode"
+            depends on FMB_COMM_MODE_RTU_EN
+
+        config MB_COMM_MODE_ASCII
+            bool "ASCII mode"
+            depends on FMB_COMM_MODE_ASCII_EN
+
+    endchoice
+
+endmenu
+
+menu "ADS Pin layout"
+    
+    config I2C_MASTER_SCL
+        int "Connected i2c SCL GPIO"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 2
+        help
+            GPIO number for I2C SCL of ADS converter.
+    
+    config I2C_MASTER_SDA
+        int "Connected i2c SDA GPIO"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 1
+        help
+            GPIO number for I2C SDA of ADS converter.
+    
+    config ADS1115_READY_INT
+        int "Connected i2c READY_PIN GPIO"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 3
+        help
+            GPIO number for the ready pin that of ADS converter,
+            used to trigger interrupt to read once ready
+    
+endmenu
+
+menu "ADS converter config"
+    config UPSTREAM_PRESSURE_CH
+        int "ADC Channel for Upstream pressure sensor"
+        range 0 4
+        default 3
+        help
+            Check the shematic to get the correct ADC channel regarding 
+            connecting pin on the terminal block.
+    
+    config DOWNSTREAM_PRESSURE_CH
+        int "ADC Channel for Downstream pressure sensor"
+        range 0 4
+        default 2
+        help
+            Check the shematic to get the correct ADC channel regarding 
+            connecting pin on the terminal block.
+    
+    config WATER_LEVEL_CH
+        int "ADC Channel for Water level sensor"
+        range 0 3
+        default 1
+        help
+            Check the shematic to get the correct ADC channel regarding 
+            connecting pin on the terminal block.
+    
+    config DELAY_ADS_DRIVER
+        int "Delay in ms between 2 queries to ADS to perform conversions"
+        range 100 60000
+        default 1000
+        help
+            This will query the conversion for all the 4 channels at this delay.
+
+    config DELAY_TEMPERATURE_DRIVER
+        int "Delay in ms between 2 queries to ESP internal temperature sensor"
+        range 100 60000
+        default 1000
+        help
+            This will set up a periodic task to read this temperature.
+endmenu

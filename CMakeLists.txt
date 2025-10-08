@@ -11,4 +11,4 @@ set(COMPONENTS cxx app bootloader bootloader_support
        main)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(zTank)
+project(zVMC)

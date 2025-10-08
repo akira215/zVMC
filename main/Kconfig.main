@@ -1,0 +1,79 @@
+menu "OTA"
+    config HARDWARE_VERSION
+        int "Hardware version for OTA update"
+        range 0 65535
+        default 1
+        help
+            Hardware version for OTA update.
+    
+    config MAX_DATA_SIZE
+        int "The maximum size of OTA data"
+        range 0 255
+        default 200
+        help
+            The maximum size of OTA data
+
+    config OTA_TIMER_QUERY
+        int "Time between OTA queries in minutes"
+        range 0 65535
+        #default 1440
+        default 1
+        help
+            The field indicates the time of querying OTA image for OTA upgrade client
+endmenu
+
+menu "Pin layout"
+    config PIN_LED
+        int "On Board LED GPIO Num"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 23
+        help
+            GPIO number for Led that App will use as UI.
+    
+    config PIN_BUTTON
+        int "On Board Button GPIO Num"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 9
+        help
+            GPIO number for the button that App will use as UI.
+    
+endmenu
+
+menu "Zigbee endpoints"
+     config GENERAL_EP
+        int "General device Endpoint"
+        range 0 1024
+        default 1
+        help
+           Zigbee general endpoint for the device.
+
+    config INPUT_EP
+        int "Air input Endpoint"
+        range 0 1024
+        default 2
+        help
+           Zigbee endpoint for Air input.
+    
+    config INTERIOR_EP
+        int "Air interior Endpoint"
+        range 0 1024
+        default 3
+        help
+            Zigbee endpoint for Air Interior.
+    
+    config SUPPLY_EP
+        int "Air supply Endpoint"
+        range 0 1024
+        default 4
+        help
+            Zigbee endpoint for air supply pressure.
+
+    config EXHAUST_EP
+        int "Air Exhaust Endpoint"
+        range 0 1024
+        default 5
+        help
+            Zigbee endpoint for air exhaust.
+
+endmenu
+

@@ -1,0 +1,12 @@
+menu "Project Settings"
+    
+    orsource "$IDF_PATH/examples/common_components/env_caps/$IDF_TARGET/Kconfig.env_caps"
+
+    rsource "./Kconfig.main"
+    rsource "./../components/zigbee/Kconfig.zb"
+    rsource "./../drivers/Kconfig.drivers"
+
+    comment "Module Debugging"
+
+    
+endmenu
