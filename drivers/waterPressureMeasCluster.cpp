@@ -9,7 +9,6 @@
 #include <esp_log.h> // TODEL development purpose
 
 #include "waterPressureMeasCluster.h"
-#include "adsDriver.h"
 
 #include <string>
 #include <math.h> // for round
@@ -51,8 +50,6 @@ WaterPressureMeasCluster::WaterPressureMeasCluster(uint8_t channel):
     // Register the callback handler for ADC converter
     // WARNING, do not start the ADC driver prior to start the zigbee stack
     // Otherwise it will try to set an attribute and will fail
-    AdsDriver::getInstance().registerAdsHandler(
-                    &WaterPressureMeasCluster::adc_event_handler, this, channel);
 }
 
 ZbCluster* WaterPressureMeasCluster::getKfactorCluster()

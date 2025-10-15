@@ -155,6 +155,19 @@ void Main::checkRTCSync(){
     }
 }
 
+void Main::setupModbus()
+{
+
+    _mb_master = new ModbusMaster((mb_comm_mode_t)CONFIG_MB_COMM_MODE, 
+                                (uart_port_t)CONFIG_MB_UART_PORT_NUM,
+                                CONFIG_MB_UART_BAUD_RATE,
+                                (uart_word_length_t)CONFIG_MB_UART_DATA_BITS,
+                                (uart_parity_t)CONFIG_MB_UART_PARITY,
+                                (uart_stop_bits_t)CONFIG_MB_UART_STOP_BITS);
+
+
+}
+
 void Main::setup(void)
 {
     ESP_LOGI(TAG,"---------- Setup ----------");
@@ -164,9 +177,7 @@ void Main::setup(void)
     _buttonTask->setShortPressHandler(&shortPressHandler);
     _buttonTask->setLongPressHandler(&longPressHandler,(void*)this);
 
-    AdsDriver::getInstance().setup();
-
-    _mb_master = new ModbusMaster(1);
+    setupModbus();
 
 
     ESP_LOGI(TAG,"Creating Zigbee device");
@@ -282,10 +293,6 @@ void Main::setup(void)
     _zbDevice->start();
 
     vTaskDelay(pdMS_TO_TICKS(7000));
-
-    // Start AdsDriver after zigbee stack as it will start to change attributes
-    // 1000ms for each measures
-    AdsDriver::getInstance().start(CONFIG_DELAY_ADS_DRIVER);
 
     _tempMeasurement->start(CONFIG_DELAY_TEMPERATURE_DRIVER);
 

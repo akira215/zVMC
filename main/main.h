@@ -5,7 +5,6 @@
 #include "buttonTask.h" // to del
 #include "blinkTask.h" // to del
 
-#include "adsDriver.h"
 #include "tempCluster.h"
 
 #include "waterFlowMeasCluster.h" 
@@ -58,6 +57,8 @@ private:
     // Check RTC Sync and trigger all operation that require to be RTC sync
     void checkRTCSync();
 
+    void setupModbus();
+
     ZbNode*                     _zbDevice           = nullptr;
     ZbTimeClusterClient*        _timeClient         = nullptr;
 
@@ -74,8 +75,6 @@ private:
 
     PeriodicSoftTask*           _checkRTCSync       = nullptr;
 
-
     ModbusMaster*               _mb_master          = nullptr;
-
 
 }; // Main Class

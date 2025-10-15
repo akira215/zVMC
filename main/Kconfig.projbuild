@@ -4,6 +4,7 @@ menu "Project Settings"
 
     rsource "./Kconfig.main"
     rsource "./../components/zigbee/Kconfig.zb"
+    rsource "./../components/modbus/Kconfig.mb"
     rsource "./../drivers/Kconfig.drivers"
 
     comment "Module Debugging"
