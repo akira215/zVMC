@@ -27,6 +27,7 @@ Main::Main()
 {
     // Setting the log level for each module
     esp_log_level_set("Main_app", ESP_LOG_DEBUG);  // Put verbose to check available stack
+    esp_log_level_set("Modbus", ESP_LOG_VERBOSE); 
     esp_log_level_set("ZbNode", ESP_LOG_DEBUG); 
     esp_log_level_set("ZbEndpoint", ESP_LOG_VERBOSE);
     esp_log_level_set("ZbNode", ESP_LOG_VERBOSE);
@@ -160,10 +161,16 @@ void Main::setupModbus()
 
     _mb_master = new ModbusMaster((mb_comm_mode_t)CONFIG_MB_COMM_MODE, 
                                 (uart_port_t)CONFIG_MB_UART_PORT_NUM,
+                                CONFIG_MB_UART_TXD,
+                                CONFIG_MB_UART_RXD,
+                                CONFIG_MB_UART_RTS,
+                                CONFIG_MB_UART_CTS,
                                 CONFIG_MB_UART_BAUD_RATE,
                                 (uart_word_length_t)CONFIG_MB_UART_DATA_BITS,
                                 (uart_parity_t)CONFIG_MB_UART_PARITY,
-                                (uart_stop_bits_t)CONFIG_MB_UART_STOP_BITS);
+                                (uart_stop_bits_t)CONFIG_MB_UART_STOP_BITS,
+                                1000,
+                                (uart_mode_t)CONFIG_MB_UART_MODE);
 
 
 }
@@ -220,13 +227,13 @@ void Main::setup(void)
     _fMeter = new WaterFlowMeasCluster();
 
     // Upstream channel 2
-    _upstreamPressure = new WaterPressureMeasCluster(CONFIG_UPSTREAM_PRESSURE_CH);
+    _upstreamPressure = new WaterPressureMeasCluster(2);
     
     // Downstream channel 3
-    _downstreamPressure = new WaterPressureMeasCluster(CONFIG_DOWNSTREAM_PRESSURE_CH);
+    _downstreamPressure = new WaterPressureMeasCluster(3);
     
     // WaterLevel channel 4
-    _waterLevel = new WaterLevelMeasCluster(CONFIG_WATER_LEVEL_CH);
+    _waterLevel = new WaterLevelMeasCluster(4);
     
     // Temperature cluster
     /*
@@ -294,7 +301,7 @@ void Main::setup(void)
 
     vTaskDelay(pdMS_TO_TICKS(7000));
 
-    _tempMeasurement->start(CONFIG_DELAY_TEMPERATURE_DRIVER);
+    _tempMeasurement->start(1000);
 
 }
 

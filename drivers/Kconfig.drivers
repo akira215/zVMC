@@ -1,10 +1,54 @@
-menu "Modbus Config"
+menu "Modubus ALDES UART pins"
+    config MB_UART_PORT_NUM
+        int "UART port number"
+        range 0 2
+        default 0
+        help
+            UART communication port number for Modbus example.
+
+    config MB_UART_TXD
+        int "UART TXD pin number"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 16
+        help
+            GPIO number for UART TX pin.
+            Put -1 to let the default setting.
+
+    config MB_UART_RXD
+        int "UART RXD pin number"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
+        default 17
+        help
+            GPIO number for UART RX pin.
+            Put -1 to let the default setting.
+
+    config MB_UART_RTS
+        int "UART RTS pin number"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 19
+        help
+            GPIO number for UART RTS pin. This pin is connected to
+            ~RE/DE pin of RS485 transceiver to switch direction.
+            Put -1 to let the default setting.
+    
+     config MB_UART_CTS
+        int "UART CTS pin number"
+        range -1 ENV_GPIO_OUT_RANGE_MAX
+        default -1
+        help
+            GPIO number for UART CTS pin. This pin is connected to
+            ~RE/DE pin of RS485 transceiver to switch direction. 
+            Put -1 to let the default setting.
+endmenu
+
+
+menu "Modbus ALDES Communication Parameters"
 
     choice
-        prompt "Modbus communication mode"
+        prompt "Modbus communication format"
         default MB_COMM_MODE_RTU if CONFIG_FMB_COMM_MODE_RTU_EN
         help
-            Selection of Modbus communication mode option for Modbus.
+            Selection of Modbus communication format.
 
         config MB_COMM_MODE_RTU
             bool "RTU mode"
@@ -20,13 +64,38 @@ menu "Modbus Config"
         int
         default 0 if MB_COMM_MODE_RTU
         default 1 if MB_COMM_MODE_ASCII
-
-    config MB_UART_PORT_NUM
-        int "UART port number"
-        range 0 2
-        default 0
+    
+    choice
+        prompt "UART mode"
+        default MB_MODE_RS485_HALF_DUPLEX
         help
-            UART communication port number for Modbus example.
+            Selection of Modbus communication mode.
+
+        config MB_MODE_UART
+            bool "regular UART mode"
+
+        config MB_MODE_RS485_HALF_DUPLEX
+            bool "half duplex RS485 UART mode control by RTS pin"
+        
+        config MB_MODE_IRDA
+            bool "IRDA  UART mode"
+        
+        config MB_MODE_RS485_COLLISION_DETECT
+            bool "RS485 collision detection UART mode (used for test purposes)"
+        
+        config MB_MODE_RS485_APP_CTRL
+            bool "application control RS485 UART mode (used for test purposes)"
+
+    endchoice
+
+    config MB_UART_MODE
+        int
+        default 0 if MB_MODE_UART
+        default 1 if MB_MODE_RS485_HALF_DUPLEX
+        default 2 if MB_MODE_IRDA
+        default 3 if MB_MODE_RS485_COLLISION_DETECT
+        default 4 if MB_MODE_RS485_APP_CTRL
+
         
     config MB_UART_BAUD_RATE
         int "UART communication speed"
@@ -102,92 +171,4 @@ menu "Modbus Config"
         default 2 if MB_STOP_BITS_1_5
         default 3 if UART_STOP_BITS_2
 
-    config MB_UART_RXD
-        int "UART RXD pin number"
-        range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
-        default 17
-        help
-            GPIO number for UART RX pin.
-
-    config MB_UART_TXD
-        int "UART TXD pin number"
-        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
-        default 16
-        help
-            GPIO number for UART TX pin.
-
-    config MB_UART_RTS
-        int "UART RTS pin number"
-        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
-        default 19
-        help
-            GPIO number for UART RTS pin. This pin is connected to
-            ~RE/DE pin of RS485 transceiver to switch direction.
-
-endmenu
-
-menu "ADS Pin layout"
-    
-    config I2C_MASTER_SCL
-        int "Connected i2c SCL GPIO"
-        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
-        default 2
-        help
-            GPIO number for I2C SCL of ADS converter.
-    
-    config I2C_MASTER_SDA
-        int "Connected i2c SDA GPIO"
-        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
-        default 1
-        help
-            GPIO number for I2C SDA of ADS converter.
-    
-    config ADS1115_READY_INT
-        int "Connected i2c READY_PIN GPIO"
-        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
-        default 3
-        help
-            GPIO number for the ready pin that of ADS converter,
-            used to trigger interrupt to read once ready
-    
-endmenu
-
-menu "ADS converter config"
-    config UPSTREAM_PRESSURE_CH
-        int "ADC Channel for Upstream pressure sensor"
-        range 0 4
-        default 3
-        help
-            Check the shematic to get the correct ADC channel regarding 
-            connecting pin on the terminal block.
-    
-    config DOWNSTREAM_PRESSURE_CH
-        int "ADC Channel for Downstream pressure sensor"
-        range 0 4
-        default 2
-        help
-            Check the shematic to get the correct ADC channel regarding 
-            connecting pin on the terminal block.
-    
-    config WATER_LEVEL_CH
-        int "ADC Channel for Water level sensor"
-        range 0 3
-        default 1
-        help
-            Check the shematic to get the correct ADC channel regarding 
-            connecting pin on the terminal block.
-    
-    config DELAY_ADS_DRIVER
-        int "Delay in ms between 2 queries to ADS to perform conversions"
-        range 100 60000
-        default 1000
-        help
-            This will query the conversion for all the 4 channels at this delay.
-
-    config DELAY_TEMPERATURE_DRIVER
-        int "Delay in ms between 2 queries to ESP internal temperature sensor"
-        range 100 60000
-        default 1000
-        help
-            This will set up a periodic task to read this temperature.
 endmenu
