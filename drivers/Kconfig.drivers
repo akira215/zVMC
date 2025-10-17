@@ -2,7 +2,7 @@ menu "Modubus ALDES UART pins"
     config MB_UART_PORT_NUM
         int "UART port number"
         range 0 2
-        default 0
+        default 1
         help
             UART communication port number for Modbus example.
 

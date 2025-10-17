@@ -1,5 +1,5 @@
 /*
-  zTank 
+  zVMC
   Repository: https://github.com/akira215/
   License: GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007
   Author: Akira Shimahara
@@ -382,10 +382,10 @@ async function onEventCallback(event) {
 // Definition ///////////////////////////////////////////////////////////////////////////
 
 const definition = {
-    zigbeeModel: ['WaterTankMonitor'],
-    model: 'WaterTankMonitor',
+    zigbeeModel: ['AldesMonitor'],
+    model: 'AldesMonitor',
     vendor: 'AkiraCorp',
-    description: 'Water Tank Monitor Device https://github.com/akira215/zTank',
+    description: 'VMC ALDES Inspirair Top Monitor Device https://github.com/akira215/zVMC',
     fromZigbee: [fromZigbee_Metering, fromZigbee_kFactor, fromZigbee_Pressure, fromZigbee_Level, fz.temperature],
     toZigbee: [toZigbee_zTank],
     exposes: [ ...genZtank(), e.temperature()],

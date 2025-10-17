@@ -7,7 +7,6 @@
 
 #include "tempCluster.h"
 
-#include "waterFlowMeasCluster.h" 
 #include "waterPressureMeasCluster.h"
 #include "waterLevelMeasCluster.h"
 
@@ -23,7 +22,7 @@
  * The string should be started with the length of its own.
  */
 #define MANUFACTURER_NAME               "\x09""AkiraCorp" //TODO del
-#define MODEL_IDENTIFIER                "\x10""WaterTankMonitor"  //TODO del
+#define MODEL_IDENTIFIER                "\x10""AldesMonitor"  //TODO del
 
 
 // Main class used for testing only
@@ -35,7 +34,10 @@ class Main final
     static BlinkTask*       _ledBlinking;
     static GpioOutput       _led;
     
-    //inline static Main* _this = nullptr;
+    // As hardware is planned for 2 uart, configure 2nd uart pin as input and output
+    GpioOutput              _tx1 {(gpio_num_t)10};
+    GpioInput               _rx1 {(gpio_num_t)11};
+    GpioOutput              _rts1 {(gpio_num_t)1};
 
 public:
     Main();
@@ -65,7 +67,6 @@ private:
     TaskHandle_t                _xButtonHandle      = nullptr;
     TaskHandle_t                _eventLoopHandle    = nullptr;
 
-    WaterFlowMeasCluster*       _fMeter             = nullptr;
     WaterPressureMeasCluster*   _upstreamPressure   = nullptr;
     WaterPressureMeasCluster*   _downstreamPressure = nullptr;
     WaterLevelMeasCluster*      _waterLevel         = nullptr;

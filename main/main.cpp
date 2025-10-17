@@ -14,8 +14,10 @@
 #include "zbEndpoint.h" // to del
 #include "periodicSoftTask.h" // to del
 
+#include "zbEndpoint.h" // to del
 
-#include "esp_check.h" // todel
+
+#include "AldesModbus.h"
 
 static const char *TAG = "Main_app";
 BlinkTask* Main::_ledBlinking = nullptr;
@@ -33,7 +35,7 @@ Main::Main()
     esp_log_level_set("ZbNode", ESP_LOG_VERBOSE);
     esp_log_level_set("AdsDriver", ESP_LOG_INFO);
     esp_log_level_set("TempDriver", ESP_LOG_VERBOSE);
-    esp_log_level_set("ZbCluster", ESP_LOG_VERBOSE);
+    esp_log_level_set("ZbCluster", ESP_LOG_INFO);
     esp_log_level_set("EventLoop", ESP_LOG_DEBUG);
     esp_log_level_set("PersistedValue", ESP_LOG_VERBOSE); 
 }
@@ -146,10 +148,8 @@ void Main::zbDeviceEventHandler(ZbNode::nodeEvent_t event)
 
 void Main::checkRTCSync(){
     if(_timeClient->isSynchronized()){
-        if (_fMeter) {
-            ESP_LOGV(TAG,"Clock is sync - triggering action on RTC");
-            _fMeter->setupResetTask(0);
-        }
+
+        ESP_LOGV(TAG,"Clock is sync - triggering action on RTC");
 
         delete _checkRTCSync;
         _checkRTCSync = nullptr;
@@ -172,6 +172,7 @@ void Main::setupModbus()
                                 1000,
                                 (uart_mode_t)CONFIG_MB_UART_MODE);
 
+    _mb_master->setDictionary(AldesModbus::device_parameters, AldesModbus::num_params);
 
 }
 
@@ -183,6 +184,11 @@ void Main::setup(void)
     _buttonTask = new ButtonTask (_button);
     _buttonTask->setShortPressHandler(&shortPressHandler);
     _buttonTask->setLongPressHandler(&longPressHandler,(void*)this);
+
+    // switch off led on UART1 as it is not used
+    _tx1.on();
+    _rx1.enablePullup();
+    _rts1.off();
 
     setupModbus();
 
@@ -223,9 +229,6 @@ void Main::setup(void)
                                         CONFIG_MAX_DATA_SIZE);
     
 
-    // Sensor clusters
-    _fMeter = new WaterFlowMeasCluster();
-
     // Upstream channel 2
     _upstreamPressure = new WaterPressureMeasCluster(2);
     
@@ -258,8 +261,6 @@ void Main::setup(void)
     // Attaching Clusters  ////////////////////////////////////////////////
     generalEp->addCluster(identifyServer);
     generalEp->addCluster(basicCl);
-    generalEp->addCluster(_fMeter);
-    generalEp->addCluster(_fMeter->getKfactorCluster());
     generalEp->addCluster(_otaCluster);
 
     inputEp->addCluster(identifyServer2);
@@ -323,6 +324,10 @@ void Main::run(void)
 
     vTaskDelay(pdMS_TO_TICKS(2000));
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    _mb_master->getParameter(AldesModbus::CID_T_OUTDOOR_AIR);
+    _mb_master->sendRequest();
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     //ESP_LOGD(TAG,"App is running");
     
 }
