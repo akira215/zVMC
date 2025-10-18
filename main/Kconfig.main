@@ -22,6 +22,17 @@ menu "OTA"
             The field indicates the time of querying OTA image for OTA upgrade client
 endmenu
 
+menu "ALDES VMC"
+
+    config VMC_POLLING_MS
+        int "Polling delay for VMC"
+        range 1000 3600000
+        default 2000
+        help
+            Delay between 2 queries to VMC device
+
+endmenu
+
 menu "Pin layout"
     config PIN_LED
         int "On Board LED GPIO Num"

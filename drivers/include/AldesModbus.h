@@ -40,6 +40,7 @@ namespace AldesModbus
         // Data Type, Data Size specify type of the characteristic and its data size.
         // Parameter Options field specifies the options that can be used to process parameter value (limits or masks).
         // Access Mode - can be used to implement custom options for processing of characteristic (Read/Write restrictions, factory mode values and etc).
+/*
         const mb_parameter_descriptor_t device_parameters[] = {
         // { CID, Param Name, Units, Modbus Slave Addr, Modbus Reg Type, Reg Start, Reg Size, Instance Offset, Data Type, Data Size, Parameter Options, Access Mode}
         { CID_T_OUTDOOR_AIR, STR("T_outdoor_air"), STR("°C"), MB_ALDES_ADDR, MB_PARAM_INPUT,
@@ -55,5 +56,5 @@ namespace AldesModbus
 
         // Calculate number of parameters in the table
         const uint16_t num_params = (sizeof(device_parameters)/sizeof(device_parameters[0]));
-
+*/
 }

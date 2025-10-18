@@ -6,6 +6,7 @@
 #include "blinkTask.h" // to del
 
 #include "tempCluster.h"
+#include "aldesDriver.h"
 
 #include "waterPressureMeasCluster.h"
 #include "waterLevelMeasCluster.h"
@@ -15,8 +16,6 @@
 #include "zbHaCluster.h"
 #include "zbTimeClusterClient.h" 
 
-
-#include "modbusMaster.h" 
 
 /* Attribute values in ZCL string format
  * The string should be started with the length of its own.
@@ -59,8 +58,6 @@ private:
     // Check RTC Sync and trigger all operation that require to be RTC sync
     void checkRTCSync();
 
-    void setupModbus();
-
     ZbNode*                     _zbDevice           = nullptr;
     ZbTimeClusterClient*        _timeClient         = nullptr;
 
@@ -76,6 +73,7 @@ private:
 
     PeriodicSoftTask*           _checkRTCSync       = nullptr;
 
-    ModbusMaster*               _mb_master          = nullptr;
+    AldesDriver*                _aldes              = nullptr;
+
 
 }; // Main Class

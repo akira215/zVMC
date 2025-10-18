@@ -156,25 +156,6 @@ void Main::checkRTCSync(){
     }
 }
 
-void Main::setupModbus()
-{
-
-    _mb_master = new ModbusMaster((mb_comm_mode_t)CONFIG_MB_COMM_MODE, 
-                                (uart_port_t)CONFIG_MB_UART_PORT_NUM,
-                                CONFIG_MB_UART_TXD,
-                                CONFIG_MB_UART_RXD,
-                                CONFIG_MB_UART_RTS,
-                                CONFIG_MB_UART_CTS,
-                                CONFIG_MB_UART_BAUD_RATE,
-                                (uart_word_length_t)CONFIG_MB_UART_DATA_BITS,
-                                (uart_parity_t)CONFIG_MB_UART_PARITY,
-                                (uart_stop_bits_t)CONFIG_MB_UART_STOP_BITS,
-                                1000,
-                                (uart_mode_t)CONFIG_MB_UART_MODE);
-
-    _mb_master->setDictionary(AldesModbus::device_parameters, AldesModbus::num_params);
-
-}
 
 void Main::setup(void)
 {
@@ -190,7 +171,7 @@ void Main::setup(void)
     _rx1.enablePullup();
     _rts1.off();
 
-    setupModbus();
+    _aldes = new AldesDriver();
 
 
     ESP_LOGI(TAG,"Creating Zigbee device");
@@ -302,6 +283,8 @@ void Main::setup(void)
 
     vTaskDelay(pdMS_TO_TICKS(7000));
 
+    _aldes->start(CONFIG_VMC_POLLING_MS);
+
     _tempMeasurement->start(1000);
 
 }
@@ -324,11 +307,7 @@ void Main::run(void)
 
     vTaskDelay(pdMS_TO_TICKS(2000));
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    _mb_master->getParameter(AldesModbus::CID_T_OUTDOOR_AIR);
-    _mb_master->sendRequest();
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    //ESP_LOGD(TAG,"App is running");
+   //ESP_LOGD(TAG,"App is running");
     
 }
 
