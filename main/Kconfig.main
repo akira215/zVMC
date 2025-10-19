@@ -27,7 +27,7 @@ menu "ALDES VMC"
     config VMC_POLLING_MS
         int "Polling delay for VMC"
         range 1000 3600000
-        default 2000
+        default 5000
         help
             Delay between 2 queries to VMC device
 

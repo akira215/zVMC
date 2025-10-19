@@ -29,11 +29,11 @@ Main::Main()
 {
     // Setting the log level for each module
     esp_log_level_set("Main_app", ESP_LOG_DEBUG);  // Put verbose to check available stack
-    esp_log_level_set("Modbus", ESP_LOG_VERBOSE); 
+    esp_log_level_set("Modbus", ESP_LOG_DEBUG); 
+    esp_log_level_set("AldesDriver", ESP_LOG_VERBOSE);
     esp_log_level_set("ZbNode", ESP_LOG_DEBUG); 
     esp_log_level_set("ZbEndpoint", ESP_LOG_VERBOSE);
     esp_log_level_set("ZbNode", ESP_LOG_VERBOSE);
-    esp_log_level_set("AdsDriver", ESP_LOG_INFO);
     esp_log_level_set("TempDriver", ESP_LOG_VERBOSE);
     esp_log_level_set("ZbCluster", ESP_LOG_INFO);
     esp_log_level_set("EventLoop", ESP_LOG_DEBUG);

@@ -58,21 +58,29 @@ public:
     void registerAldesHandler(void (C::* func)(double), C* instance, uint8_t channel) {
         _adsCallbacks.insert({channel, std::bind(func,std::ref(*instance),std::placeholders::_1)}); 
     }
+
+private:
+    void getDeviceInfos();
+    void getSpeedSettings();
+    void setUserLevel(uint8_t lvl);
+    void postEvent(uint8_t channel, double value);
+
+    static const char* aldesDeviceFromCode(uint32_t code);
     
 private:
     ModbusMaster* _mb_master = nullptr;
 
     PeriodicSoftTask* _periodicTask;
 
-    double _voltage[4];
+    uint32_t    _product_code   = 0;
+    uint64_t    _serial_num     = 0;
+    uint16_t    _firm_ver       = 0;
 
     /// @brief Callback type, only one call back for each channel
     typedef std::function<void(double)> adsCallback_t;
     
     // Map of call back first is channel, second is callback
     std::map<uint8_t, adsCallback_t> _adsCallbacks;
-
-    void postEvent(uint8_t channel, double value);
       
 
 }; // AldesDriver Class
