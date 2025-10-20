@@ -63,6 +63,7 @@ private:
 
     TaskHandle_t                _xButtonHandle      = nullptr;
     TaskHandle_t                _eventLoopHandle    = nullptr;
+    TaskHandle_t                _mbHandle           = nullptr;
 
     WaterPressureMeasCluster*   _upstreamPressure   = nullptr;
     WaterPressureMeasCluster*   _downstreamPressure = nullptr;
@@ -73,7 +74,6 @@ private:
 
     PeriodicSoftTask*           _checkRTCSync       = nullptr;
 
-    AldesDriver*                _aldes              = nullptr;
-
+    AldesDriver*                _aldes              = nullptr;        
 
 }; // Main Class

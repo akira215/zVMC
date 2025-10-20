@@ -272,6 +272,7 @@ void Main::setup(void)
     // Get task handles from tasks names
     _eventLoopHandle = xTaskGetHandle( "ZbEventLoop" );
     _xButtonHandle = xTaskGetHandle( "button_task" ); 
+    _mbHandle = xTaskGetHandle( "mbc_ser_master" ); 
     
     //driver_init();
 
@@ -285,6 +286,7 @@ void Main::setup(void)
 
     _aldes->start(CONFIG_VMC_POLLING_MS);
 
+
     _tempMeasurement->start(1000);
 
 }
@@ -293,7 +295,8 @@ void Main::setup(void)
 
 void Main::run(void)
 {
-    
+    ESP_LOGV(TAG,"Modbus task high water mark %d", 
+                            uxTaskGetStackHighWaterMark(_mbHandle ));
     ESP_LOGV(TAG,"Main task high water mark %d", 
                             uxTaskGetStackHighWaterMark(NULL));
 

@@ -21,6 +21,12 @@ namespace AldesModbus
         REG_SERIAL_NUMBER           = ( 0x0003 ),   // 4 WORD
         REG_SOFT_VERSION            = ( 0x000c ),   // 1 WORD
         REG_USER_LEVEL              = ( 0x0010 ),   // 1 WORD
+        REG_REGULATION_MODE         = ( 0x0100 ),   // 1 WORD
+        REG_DEMAND_USER             = ( 0x0101 ),   // 1 WORD
+        REG_DEMAND_PROGRAMMER       = ( 0x0102 ),   // 1 WORD
+        REG_BYPASS_MODE             = ( 0x0103 ),   // 1 WORD
+        REG_TEMPO_FILTER            = ( 0x010b ),   // 1 WORD
+        REG_UNBALANCED_COEF_MVI     = ( 0x0116 ),   // 1 WORD
         REG_BYPASS_POSITION         = ( 0x015c ),   // 1 WORD
         REG_T_INTAKE_AIR_OUT        = ( 0x015e ),   // 1 WORD
         REG_T_EXTRACT_AIR_IN        = ( 0x015f ),   // 1 WORD

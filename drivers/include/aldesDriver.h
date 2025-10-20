@@ -13,38 +13,57 @@
 #include "modbusMaster.h" 
 #include "periodicSoftTask.h"
 
+struct AldesData_t
+{
+    uint32_t    product_code       = 0xffffffff;
+    uint64_t    serial_num         = 0xffffffffffffffff;
+    uint16_t    firm_ver           = 0xffff;
 
-// Singleton class
+    uint16_t    regulation_mode   = 0xffff; //0:airflow /1:Hydro/2:Speed 
+    uint16_t    demand_user       = 0xffff; //1:Daily/2:Boost/3:Invités/0:Holidays/255:Ignorer/4:MaxSpeed(DK)
+    uint16_t    demand_programmer = 0xffff; //1:Daily/2:Boost/3:Invités/0:Holidays/4:MaxSpeed(DK)
+    uint16_t    bypass_mode       = 0xffff; //0:Manual/1:Auto 
+
+    uint16_t    tempo_filter       = 0xffff; //month
+
+    int16_t     T_intake_air_out   = 0xffff; // 0.01 °C
+    int16_t     T_extract_air_in   = 0xffff; // 0.01 °C
+    int16_t     T_supply_air_in    = 0xffff; // 0.01 °C
+    int16_t     T_exhaust_air_out  = 0xffff; // 0.01 °C
+
+    uint16_t    speed_exhaust_fan  = 0xffff; // rpm
+    uint16_t    speed_supply_fan   = 0xffff; // rpm
+    uint16_t    airflow_MVE        = 0xffff; // m3/h
+    uint16_t    airflow_MVI        = 0xffff; // m3/h
+
+    int16_t     pressure           = 0xffff; // 0.1 Pa
+    uint16_t    bypass_position     = 0xffff; // "0:Not defined/1:Open/2:closed 45°/3:closed"
+
+    uint16_t    setting_MVE_vacation   = 0xffff; //m3/h
+    uint16_t    setting_MVI_vacation   = 0xffff; //m3/h
+    uint16_t    setting_MVE_daily      = 0xffff; //m3/h
+    uint16_t    setting_MVI_daily      = 0xffff; //m3/h
+    uint16_t    setting_MVE_pushButton = 0xffff; //m3/h
+    uint16_t    setting_MVI_pushButton = 0xffff; //m3/h
+    uint16_t    setting_MVE_boost      = 0xffff; //m3/h
+    uint16_t    setting_MVI_boost      = 0xffff; //m3/h
+    uint16_t    setting_MVE_maxSpeed   = 0xffff; //m3/h
+    uint16_t    setting_MVI_maxSpeed   = 0xffff; //m3/h
+};
+
 class AldesDriver final
 {
 
 public:
     AldesDriver();
 
-    void setup(void);
-
     /// @brief Start periodic query of the sensors 
     /// @param delay_ms Delay between 2 queries, should be greater than query duration (Sum of each conversion times)
     void start(uint64_t delay_ms = 1000);
     
-    
+    /// @brief Start periodic queries
     void stop(void);
     
-/*
-    /// @brief Set the voltage of the input
-    /// @param  channel between 0 and 3, correspondint voltage
-    /// @param value value to be set
-    void setVoltage(uint8_t channel, double value);
-
-    /// @brief Get the current voltage of the input
-    /// @param  channel between 0 and 3, correspondint voltage
-    /// @return the voltage for this input
-    double getVoltage(uint8_t  channel);
-*/
-
-    /// @brief Event handler when conversion is received
-    static void ads1115_event_handler(uint16_t input, double value);
-
     /// @brief Event handler for periodic task
     /// @brief Trigger a reading on the device
     void trigger_reading();
@@ -62,25 +81,29 @@ public:
 private:
     void getDeviceInfos();
     void getSpeedSettings();
+    void getRegulationParams();
+
+    void getFilterTimerState();
+    void getBypassPosition();
+    void getTemperaturesAndFanSpeed();
+
     void setUserLevel(uint8_t lvl);
     void postEvent(uint8_t channel, double value);
 
     static const char* aldesDeviceFromCode(uint32_t code);
     
 private:
-    ModbusMaster* _mb_master = nullptr;
 
-    PeriodicSoftTask* _periodicTask;
-
-    uint32_t    _product_code   = 0;
-    uint64_t    _serial_num     = 0;
-    uint16_t    _firm_ver       = 0;
+    AldesData_t _data;
 
     /// @brief Callback type, only one call back for each channel
     typedef std::function<void(double)> adsCallback_t;
     
     // Map of call back first is channel, second is callback
     std::map<uint8_t, adsCallback_t> _adsCallbacks;
+
+    PeriodicSoftTask* _periodicTask;
+    ModbusMaster* _mb_master = nullptr;
       
 
 }; // AldesDriver Class

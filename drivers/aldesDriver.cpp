@@ -16,6 +16,7 @@ static const char *ALDES_TAG = "AldesDriver";
 
 
 // Static event handler
+/*
 void AldesDriver::ads1115_event_handler(uint16_t input, double value)
 {
     ESP_LOGV(ALDES_TAG, "Callback Main Ads1115 input: %d - value: %f", input-4, value);
@@ -24,55 +25,17 @@ void AldesDriver::ads1115_event_handler(uint16_t input, double value)
     //AldesDriver::getInstance().postEvent(input-4, value);
 
 }
+    */
 
 // Event handler for periodic soft task
 void AldesDriver::trigger_reading()
 {
-    mb_data temp = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
-                                            AldesModbus::REG_BYPASS_POSITION,
-                                            1);
-    if (temp.getSize() > 0)
-        ESP_LOGI(ALDES_TAG, "Reg 0x%04x Slave answer : %d", 
-                AldesModbus::REG_BYPASS_POSITION, (uint16_t)temp);
-    
-    temp = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
-                                    AldesModbus::REG_T_INTAKE_AIR_OUT,
-                                    2);
-    if (temp.getSize() > 0)
-        ESP_LOGI(ALDES_TAG, "Intake air outside T° : %d  - Extracted air inside T°: %d", 
-                AldesModbus::REG_T_INTAKE_AIR_OUT , (int16_t)temp, (int16_t)temp.getDataFrom(2));
-    
-    
-    ////// ESP_LOGW(ALDES_TAG, "Reading register level 3");
-    temp = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
-                                    AldesModbus::REG_T_SUPPLY_AIR_IN,
-                                    7);
-    if (temp.getSize() > 0)
-    {
-        if ((int16_t)temp == (int16_t)0xffff){ // User Level is not set correctly
-            ESP_LOGI(ALDES_TAG, "Set user level to 3");
-            setUserLevel(3);
-        } else {
-            ESP_LOGI(ALDES_TAG, "Supply air inside T°: %d - Exhaust air outside %d", 
-                        (int16_t)temp, (int16_t)temp.getDataFrom(2));
-            
-            ESP_LOGI(ALDES_TAG, "Exhaust Fan: %d rpm - Supply Fan %d rpm", 
-                        (int16_t)temp.getDataFrom(4), (int16_t)temp.getDataFrom(6));
-            
-            ESP_LOGI(ALDES_TAG, "Exhaust Airflow: %d m3/h - Supply Airflow %d m3/h", 
-                        (int16_t)temp.getDataFrom(8), (int16_t)temp.getDataFrom(10));
-            
-            ESP_LOGI(ALDES_TAG, "Pressure: %d Pa (0.1)", 
-                        (int16_t)temp.getDataFrom(12));
-        }
-
-        
-    }
-    
-    
-    //_mb_master->testRequest();
+   
+    getBypassPosition();
+    getTemperaturesAndFanSpeed();
 
 }
+
 
 // Constructor
 AldesDriver::AldesDriver()
@@ -96,9 +59,10 @@ void AldesDriver::start(uint64_t delay_ms)
 
     getDeviceInfos();
     getSpeedSettings();
+    getRegulationParams();
     setUserLevel(3);
     _periodicTask = new PeriodicSoftTask(&AldesDriver::trigger_reading, 
-                            this, delay_ms, "aldes");
+                            this, delay_ms, "aldesT");
     
 }
 
@@ -115,22 +79,22 @@ void AldesDriver::getDeviceInfos()
                                             6);
                                         
     if (gen_data.getSize() > 0)
-        _product_code = gen_data;
+        _data.product_code = gen_data;
 
     ESP_LOGD(ALDES_TAG, "Product Code : %d - %s", 
-                    _product_code, aldesDeviceFromCode(_product_code));
+                    _data.product_code, aldesDeviceFromCode(_data.product_code));
 
-    _serial_num = gen_data.getDataFrom(4);
+    _data.serial_num = gen_data.getDataFrom(4);
 
-    ESP_LOGD(ALDES_TAG, "Serial Number : %d ", _serial_num);
+    ESP_LOGD(ALDES_TAG, "Serial Number : %d ", _data.serial_num);
 
     mb_data firm_ver = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
                                             AldesModbus::REG_SOFT_VERSION,
                                             1);
     if (firm_ver.getSize() > 0)
-        _firm_ver = firm_ver;
+        _data.firm_ver = firm_ver;
 
-    ESP_LOGD(ALDES_TAG, "Firmware version : %d", _firm_ver);
+    ESP_LOGD(ALDES_TAG, "Firmware version : %d", _data.firm_ver);
     
 }
 
@@ -142,25 +106,128 @@ void AldesDriver::getSpeedSettings()
                                         
     if (speed_settings.getSize() > 0)
     {
-        ESP_LOGI(ALDES_TAG, "Vacation MVE: %d m3/h- MVI: %d m3/h", 
-                (uint16_t)speed_settings, 
-                (uint16_t)speed_settings.getDataFrom(2));
-        ESP_LOGI(ALDES_TAG, "Daily MVE: %d m3/h- MVI: %d m3/h", 
-                (uint16_t)speed_settings.getDataFrom(4), 
-                (uint16_t)speed_settings.getDataFrom(6));
-        ESP_LOGI(ALDES_TAG, "Push Button MVE: %d m3/h- MVI: %d m3/h",  
-                (uint16_t)speed_settings.getDataFrom(8), 
-                (uint16_t)speed_settings.getDataFrom(10));
-        ESP_LOGI(ALDES_TAG, "Boost MVE: %d m3/h- MVI: %d m3/h",  
-                (uint16_t)speed_settings.getDataFrom(12), 
-                (uint16_t)speed_settings.getDataFrom(14));
-        ESP_LOGI(ALDES_TAG, "Max Speed MVE: %d m3/h- MVI: %d m3/h", 
-                (uint16_t)speed_settings.getDataFrom(16), 
-                (uint16_t)speed_settings.getDataFrom(18));
+        _data.setting_MVE_vacation   = speed_settings;
+        _data.setting_MVI_vacation   = speed_settings.getDataFrom(2);
+        _data.setting_MVE_daily      = speed_settings.getDataFrom(4);
+        _data.setting_MVI_daily      = speed_settings.getDataFrom(6);
+        _data.setting_MVE_pushButton = speed_settings.getDataFrom(8);
+        _data.setting_MVI_pushButton = speed_settings.getDataFrom(10);
+        _data.setting_MVE_boost      = speed_settings.getDataFrom(12);
+        _data.setting_MVI_boost      = speed_settings.getDataFrom(14);
+        _data.setting_MVE_maxSpeed   = speed_settings.getDataFrom(16);
+        _data.setting_MVI_maxSpeed   = speed_settings.getDataFrom(18);
     }
-        
+
+    ESP_LOGV(ALDES_TAG, "--------------------------------------------------------------");
+    ESP_LOGV(ALDES_TAG, "|   | Vacation |  Daily   | PushButton |  Boost   | MaxSpeed |");
+    ESP_LOGV(ALDES_TAG, "|---|----------|----------|------------|----------|----------|");
+    ESP_LOGV(ALDES_TAG, "|MVE|    %d    |    %d   |    %d     |    %d   |    %d   |",
+            _data.setting_MVE_vacation, _data.setting_MVE_daily, _data.setting_MVE_pushButton, 
+            _data.setting_MVE_boost,_data.setting_MVE_maxSpeed);
+    ESP_LOGV(ALDES_TAG, "|MVI|    %d    |    %d   |    %d     |    %d   |    %d   |",
+            _data.setting_MVI_vacation, _data.setting_MVI_daily, _data.setting_MVI_pushButton, 
+            _data.setting_MVI_boost,_data.setting_MVI_maxSpeed);
+    ESP_LOGV(ALDES_TAG, "--------------------------------------------------------------"); 
 
 }
+
+void AldesDriver::getRegulationParams()
+{
+    mb_data regul_params = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                            AldesModbus::REG_REGULATION_MODE,
+                                            4);
+                                        
+    if (regul_params.getSize() > 0)
+    {
+        _data.regulation_mode    = regul_params;
+        _data.demand_user        = regul_params.getDataFrom(2);
+        _data.demand_programmer  = regul_params.getDataFrom(4);
+        _data.bypass_mode        = regul_params.getDataFrom(6);
+    }
+
+    regul_params = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                            AldesModbus::REG_TEMPO_FILTER,
+                                            1);
+    
+    if (regul_params.getSize() > 0)
+        _data.tempo_filter = regul_params;
+    
+    regul_params = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                            AldesModbus::REG_UNBALANCED_COEF_MVI,
+                                            1);
+    ESP_LOGV(ALDES_TAG, "----------------------");
+    ESP_LOGV(ALDES_TAG, "| Regul Mode  |  %d   |", _data.regulation_mode );
+    ESP_LOGV(ALDES_TAG, "| Demand User |  %d   |", _data.demand_user );
+    ESP_LOGV(ALDES_TAG, "| Demand Prog |  %d   |", _data.demand_programmer );
+    ESP_LOGV(ALDES_TAG, "| Bypass Mode |  %d   |", _data.bypass_mode );
+    ESP_LOGV(ALDES_TAG, "| Tempo Filter|  %d  |", _data.tempo_filter );
+    if (regul_params.getSize() > 0)
+        ESP_LOGV(ALDES_TAG, "| Unbalanced C|  %d |", (int16_t)regul_params);
+    ESP_LOGV(ALDES_TAG, "----------------------");
+
+}
+
+void AldesDriver::getFilterTimerState()
+{
+
+}
+
+void AldesDriver::getBypassPosition()
+{
+     mb_data bypassPos = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                            AldesModbus::REG_BYPASS_POSITION,
+                                            1);
+    if (bypassPos.getSize() > 0)
+        _data.bypass_position    = bypassPos;
+    
+    ESP_LOGV(ALDES_TAG, "Bypass position : %d", 
+                _data.bypass_position);
+}
+
+void AldesDriver::getTemperaturesAndFanSpeed()
+{
+    mb_data data = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                    AldesModbus::REG_T_INTAKE_AIR_OUT,
+                                    2);
+    if (data.getSize() > 0){
+        _data.T_intake_air_out = data;
+        _data.T_extract_air_in = data.getDataFrom(2);
+    }
+    
+    // Accessing level 3 register
+    data = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                    AldesModbus::REG_T_SUPPLY_AIR_IN,
+                                    7);
+    if (data.getSize() > 0)
+    {
+        if ((int16_t)data == (int16_t)0xffff){ // User Level is not set correctly
+            ESP_LOGI(ALDES_TAG, "Set user level to 3");
+            setUserLevel(3);
+        } else {
+            _data.T_supply_air_in    = data;
+            _data.T_exhaust_air_out  = data.getDataFrom(2);
+            _data.speed_exhaust_fan  = data.getDataFrom(4);
+            _data.speed_supply_fan   = data.getDataFrom(6);
+            _data.airflow_MVE        = data.getDataFrom(8);
+            _data.airflow_MVI        = data.getDataFrom(10);
+            _data.pressure           = data.getDataFrom(12);
+        }
+
+    }
+
+    ESP_LOGV(ALDES_TAG, "-----------------------------------------------------------------------------");
+    ESP_LOGV(ALDES_TAG, "| T_intake_air_out | T_extract_air_in | T_supply_air_in | T_exhaust_air_out |");
+    ESP_LOGV(ALDES_TAG, "|        %d      |        %d      |        %d     |         %d      |",
+                        _data.T_intake_air_out,   _data.T_extract_air_in, _data.T_supply_air_in, _data.T_exhaust_air_out);
+    ESP_LOGV(ALDES_TAG, "|------------------|------------------|-----------------|-------------------|");
+    ESP_LOGV(ALDES_TAG, "|Speed_Exhaust_Fan | Speed_Supply_Fan |   Airflow_MVE   |    Airflow_MVI    |");
+    ESP_LOGV(ALDES_TAG, "|     %d rpm     |    %d rpm      |     %d m3/h    |       %d m3/h    |",
+                        _data.speed_exhaust_fan,   _data.speed_supply_fan, _data.airflow_MVE, _data.airflow_MVI);
+    ESP_LOGV(ALDES_TAG, "-----------------------------------------------------------------------------");
+    ESP_LOGV(ALDES_TAG, "Pressure : %d",    _data.pressure);     
+
+}
+
 
 void AldesDriver::setUserLevel(uint8_t lvl)
 {
