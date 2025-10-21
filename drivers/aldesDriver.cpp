@@ -33,6 +33,7 @@ void AldesDriver::trigger_reading()
    
     getBypassPosition();
     getTemperaturesAndFanSpeed();
+    getCurrentState();
 
 }
 
@@ -57,9 +58,19 @@ AldesDriver::AldesDriver()
 void AldesDriver::start(uint64_t delay_ms)
 {
 
-    getDeviceInfos();
+    getDeviceInfos(); // TODO set a retry task if not succeed
     getSpeedSettings();
     getRegulationParams();
+    getFanConfig();
+
+    getFilterTimerState();  // TODO put in another daily periodicTask
+    getSeasonDetection();  // TODO put in another daily periodicTask
+    getDate();
+    getErrorCode(); // TODO When do we want to check this
+
+    getTBypassSummer();// TODO When do we want to check this Set as well
+
+
     setUserLevel(3);
     _periodicTask = new PeriodicSoftTask(&AldesDriver::trigger_reading, 
                             this, delay_ms, "aldesT");
@@ -167,8 +178,117 @@ void AldesDriver::getRegulationParams()
 
 }
 
+void AldesDriver::getFanConfig()
+{
+    mb_data fan_cfg = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                            AldesModbus::REG_FAN_CONFIG,
+                                            1);
+    if (fan_cfg.getSize() > 0)
+    {
+        _data.fan_config = fan_cfg;
+    }
+    
+    ESP_LOGV(ALDES_TAG, "-------------Season----------");
+    ESP_LOGV(ALDES_TAG, "|2:Config A/1:Config B/0:None|");
+    ESP_LOGV(ALDES_TAG, "|        %d                  |", 
+                    _data.fan_config);
+    ESP_LOGV(ALDES_TAG, "------------------------------");
+}
+
 void AldesDriver::getFilterTimerState()
 {
+    mb_data filterState = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                            AldesModbus::REG_FILTER_STATE_PERCENT,
+                                            2);
+    if (filterState.getSize() > 0)
+    {
+        _data.filter_state_percent = filterState;
+        _data.filter_state_days = filterState.getDataFrom(2);
+    }
+    
+    ESP_LOGV(ALDES_TAG, "---Filter state---");
+    ESP_LOGV(ALDES_TAG, "|   %  |   days  |");
+    ESP_LOGV(ALDES_TAG, "|  %d |  %d |", 
+                _data.filter_state_percent, _data.filter_state_days);
+    ESP_LOGV(ALDES_TAG, "------------------");
+}
+
+void AldesDriver::getSeasonDetection()
+{
+     mb_data season = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                            AldesModbus::REG_SEASON_DETECTION,
+                                            1);
+    if (season.getSize() > 0)
+    {
+        _data.season_detection = season;
+
+    }
+    
+    ESP_LOGV(ALDES_TAG, "-------------Season----------");
+    ESP_LOGV(ALDES_TAG, "|0:Unknown/1:Winter/2:Summer|");
+    ESP_LOGV(ALDES_TAG, "|        %d                  |", 
+                    _data.season_detection);
+    ESP_LOGV(ALDES_TAG, "------------------------------");
+}
+
+void AldesDriver::getDate()  // TODO Set Date and check how datetime32 is formatted
+{
+    mb_data date = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                            AldesModbus::REG_DATETIME32,
+                                            9);
+    if (date.getSize() > 0)
+    {
+        ESP_LOGV(ALDES_TAG, "------Date Time---------");
+        ESP_LOGV(ALDES_TAG, "| datetime32:  %d  |", (uint32_t)date );
+        ESP_LOGV(ALDES_TAG, "| %d-%d-%d day: %d   |",
+                    (uint16_t)date.getDataFrom(4),
+                    (uint16_t)date.getDataFrom(6),
+                    (uint16_t)date.getDataFrom(8),
+                    (uint16_t)date.getDataFrom(10)
+                );
+        ESP_LOGV(ALDES_TAG, "| %d:%d:%d       |",
+                    (uint16_t)date.getDataFrom(12),
+                    (uint16_t)date.getDataFrom(14),
+                    (uint16_t)date.getDataFrom(16)
+                );
+        ESP_LOGV(ALDES_TAG, "-------------------------");
+    }
+    
+}
+
+void AldesDriver::getErrorCode()
+{
+    mb_data error = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                            AldesModbus::REG_ERROR_CODE,
+                                            1);
+    if (error.getSize() > 0)
+    {
+        _data.error_code = error;
+
+    }
+    
+    ESP_LOGV(ALDES_TAG, "-------------Error----------");
+    ESP_LOGV(ALDES_TAG, "|        %d                  |", 
+                    _data.error_code);
+    ESP_LOGV(ALDES_TAG, "------------------------------");
+
+}
+
+void AldesDriver::getTBypassSummer()
+{
+    mb_data t_bypass = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                            AldesModbus::REG_T_BYPASS_SUMMER,
+                                            1);
+    if (t_bypass.getSize() > 0)
+    {
+        _data.T_bypass_summer = t_bypass;
+
+    }
+    
+    ESP_LOGV(ALDES_TAG, "-------T° bypass summer-------");
+    ESP_LOGV(ALDES_TAG, "|        %d                |", 
+                    _data.T_bypass_summer);
+    ESP_LOGV(ALDES_TAG, "------------------------------");
 
 }
 
@@ -228,6 +348,22 @@ void AldesDriver::getTemperaturesAndFanSpeed()
 
 }
 
+void AldesDriver::getCurrentState()
+{
+    mb_data state = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                            AldesModbus::REG_CURRENT_LEVEL,
+                                            2);
+    if (state.getSize() > 0)
+    {
+        _data.current_level = state;
+        _data.requester = state.getDataFrom(2);
+    }
+    
+    ESP_LOGV(ALDES_TAG, "------Current State-----");
+    ESP_LOGV(ALDES_TAG, "| current lvl:  %d  |",_data.current_level);
+    ESP_LOGV(ALDES_TAG, "| requester:   %d   |",_data.requester);
+    ESP_LOGV(ALDES_TAG, "------------------------");
+}
 
 void AldesDriver::setUserLevel(uint8_t lvl)
 {

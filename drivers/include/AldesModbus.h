@@ -27,6 +27,8 @@ namespace AldesModbus
         REG_BYPASS_MODE             = ( 0x0103 ),   // 1 WORD
         REG_TEMPO_FILTER            = ( 0x010b ),   // 1 WORD
         REG_UNBALANCED_COEF_MVI     = ( 0x0116 ),   // 1 WORD
+        REG_FILTER_STATE_PERCENT    = ( 0x015a ),   // 1 WORD
+        REG_FILTER_STATE_DAYS       = ( 0x015b ),   // 1 WORD
         REG_BYPASS_POSITION         = ( 0x015c ),   // 1 WORD
         REG_T_INTAKE_AIR_OUT        = ( 0x015e ),   // 1 WORD
         REG_T_EXTRACT_AIR_IN        = ( 0x015f ),   // 1 WORD
@@ -37,6 +39,13 @@ namespace AldesModbus
         REG_AIRFLOW_MVE             = ( 0x0164 ),   // 1 WORD
         REG_AIRFLOW_MVI             = ( 0x0165 ),   // 1 WORD
         REG_PRESSURE                = ( 0x0166 ),   // 1 WORD
+        REG_SEASON_DETECTION        = ( 0x0175 ),   // 1 WORD
+        REG_ERROR_CODE              = ( 0x0180 ),   // 1 WORD
+        REG_T_BYPASS_SUMMER         = ( 0x01ec ),   // 1 WORD
+        REG_T_BYPASS_FULL_OPEN_CLOSE= ( 0x0300 ),   // 1 WORD
+        REG_T_BYPASS_OPEN_ANGLE     = ( 0x0301 ),   // 1 WORD
+        REG_T_BYPASS_CLOSE_ANGLE    = ( 0x0302 ),   // 1 WORD
+        REG_FAN_CONFIG              = ( 0x0404 ),   // 1 WORD
         REG_SETTING_MVE_VACATION    = ( 0x0410 ),   // 1 WORD
         REG_SETTING_MVI_VACATION    = ( 0x0411 ),   // 1 WORD
         REG_SETTING_MVE_DAILY       = ( 0x0412 ),   // 1 WORD
@@ -47,6 +56,16 @@ namespace AldesModbus
         REG_SETTING_MVI_BOOST       = ( 0x0417 ),   // 1 WORD
         REG_SETTING_MVE_MAX_SPEED   = ( 0x0418 ),   // 1 WORD
         REG_SETTING_MVI_MAX_SPEED   = ( 0x0419 ),   // 1 WORD
+        REG_CURRENT_LEVEL           = ( 0x0420 ),   // 1 WORD
+        REG_REQUESTER               = ( 0x0421 ),   // 1 WORD
+        REG_DATETIME32              = ( 0x0516 ),   // 2 WORD
+        REG_DATE_YEAR               = ( 0x0518 ),   // 1 WORD
+        REG_DATE_MONTH              = ( 0x0519 ),   // 1 WORD
+        REG_DATE_DAY                = ( 0x051a ),   // 1 WORD
+        REG_DATE_WEEKDAY            = ( 0x051b ),   // 1 WORD
+        REG_TIME_HOURS              = ( 0x051c ),   // 1 WORD
+        REG_TIME_MINUTES            = ( 0x051d ),   // 1 WORD
+        REG_TIME_SECONDS            = ( 0x051e ),   // 1 WORD
     };
 
     enum {
