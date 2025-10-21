@@ -235,21 +235,30 @@ void AldesDriver::getDate()  // TODO Set Date and check how datetime32 is format
 {
     mb_data date = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
                                             AldesModbus::REG_DATETIME32,
-                                            9);
+                                            2);
+    
+    if (date.getSize() > 0)
+        _data.date_time = date;
+
+    
+    date = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
+                                            AldesModbus::REG_DATE_YEAR,
+                                            7);
+
     if (date.getSize() > 0)
     {
         ESP_LOGV(ALDES_TAG, "------Date Time---------");
-        ESP_LOGV(ALDES_TAG, "| datetime32:  %d  |", (uint32_t)date );
+        ESP_LOGV(ALDES_TAG, "| datetime32:  %d  |", _data.date_time );
         ESP_LOGV(ALDES_TAG, "| %d-%d-%d day: %d   |",
+                    (uint16_t)date,
+                    (uint16_t)date.getDataFrom(2),
                     (uint16_t)date.getDataFrom(4),
-                    (uint16_t)date.getDataFrom(6),
-                    (uint16_t)date.getDataFrom(8),
-                    (uint16_t)date.getDataFrom(10)
+                    (uint16_t)date.getDataFrom(6)
                 );
         ESP_LOGV(ALDES_TAG, "| %d:%d:%d       |",
-                    (uint16_t)date.getDataFrom(12),
-                    (uint16_t)date.getDataFrom(14),
-                    (uint16_t)date.getDataFrom(16)
+                    (uint16_t)date.getDataFrom(8),
+                    (uint16_t)date.getDataFrom(10),
+                    (uint16_t)date.getDataFrom(12)
                 );
         ESP_LOGV(ALDES_TAG, "-------------------------");
     }

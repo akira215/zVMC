@@ -68,6 +68,7 @@ class AldesDriver final
         uint16_t    current_level           = 0xffff; //1:Daily/2:Boost/3:Invités/0:Holidays/4:MaxSpeed(DK)
         uint16_t    requester               = 0xffff; //0:User/1:Prog IOT/2:Capteur IOT/3:Régulation/4:Option HR/5:Entrée AI0/6:Entrée AI1/7:Bouton Cuisine/8:Co2 IHM/9:Mode SAFE/10:Air Prog
 
+        uint16_t    date_time               = 0xffffffff; // numer of second since 01/01/2000 00:00:00
 
     };
 
