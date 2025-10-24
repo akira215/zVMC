@@ -74,17 +74,26 @@ class AldesDriver final
 
 public:
     AldesDriver();
+    ~AldesDriver();
+
+    /// @brief Query device for all global infos
+    /// @return ture if succeed, false otherwise
+    void query_global_infos();
 
     /// @brief Start periodic query of the sensors 
     /// @param delay_ms Delay between 2 queries, should be greater than query duration (Sum of each conversion times)
-    void start(uint64_t delay_ms = 1000);
+    void start(uint64_t poll_fast_ms = 1000, uint64_t poll_slow_s = 20);
     
     /// @brief Start periodic queries
     void stop(void);
     
     /// @brief Event handler for periodic task
     /// @brief Trigger a reading on the device
-    void trigger_reading();
+    void query_device_fast();
+
+    /// @brief Event handler for periodic task
+    /// @brief Trigger a reading on the device for filters, ...
+    void query_device_slow();
 
     /// @brief register event handler for this cluster.
     /// to pass args to the function, use std::bind
@@ -97,10 +106,10 @@ public:
     }
 
 private:
-    void getDeviceInfos();
-    void getSpeedSettings();
-    void getRegulationParams();
-    void getFanConfig();
+    bool getDeviceInfos();
+    bool getSpeedSettings();
+    bool getRegulationParams();
+    bool getFanConfig();
 
     void getFilterTimerState();
     void getSeasonDetection();
@@ -115,6 +124,9 @@ private:
     void getTemperaturesAndFanSpeed();
 
     void setUserLevel(uint8_t lvl);
+    void setFilterTimer (uint16_t days);
+    void testFilter() {setFilterTimer(10);} //TODEL
+
     void postEvent(uint8_t channel, double value);
 
     static const char* aldesDeviceFromCode(uint32_t code);
@@ -129,7 +141,8 @@ private:
     // Map of call back first is channel, second is callback
     std::map<uint8_t, adsCallback_t> _adsCallbacks;
 
-    PeriodicSoftTask* _periodicTask;
+    PeriodicSoftTask* _fastPollTask = nullptr;
+    PeriodicSoftTask* _slowPollTask = nullptr;
     ModbusMaster* _mb_master = nullptr;
       
 

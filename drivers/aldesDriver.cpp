@@ -8,6 +8,7 @@
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include <esp_log.h> // TODEL development purpose
 
+#include "scheduledTask.h"
 #include "aldesDriver.h"
 #include "aldesModbus.h"
 #include "zbNode.h"
@@ -28,13 +29,20 @@ void AldesDriver::ads1115_event_handler(uint16_t input, double value)
     */
 
 // Event handler for periodic soft task
-void AldesDriver::trigger_reading()
+void AldesDriver::query_device_fast()
 {
    
     getBypassPosition();
     getTemperaturesAndFanSpeed();
     getCurrentState();
 
+}
+
+// Event handler for periodic soft task
+void AldesDriver::query_device_slow()
+{
+    getFilterTimerState();  // TODO put in another daily periodicTask
+    getSeasonDetection();  // TODO put in another daily periodicTask
 }
 
 
@@ -55,35 +63,61 @@ AldesDriver::AldesDriver()
                                 (uart_mode_t)CONFIG_MB_UART_MODE);
 }
 
-void AldesDriver::start(uint64_t delay_ms)
+AldesDriver::~AldesDriver()
 {
+    stop();
+}
 
-    getDeviceInfos(); // TODO set a retry task if not succeed
-    getSpeedSettings();
-    getRegulationParams();
-    getFanConfig();
-
-    getFilterTimerState();  // TODO put in another daily periodicTask
-    getSeasonDetection();  // TODO put in another daily periodicTask
+void AldesDriver::start(uint64_t poll_fast_ms, uint64_t poll_slow_s)
+{
+    query_global_infos(); // warning this will retry automatically 
+       
     getDate();
     getErrorCode(); // TODO When do we want to check this
 
     getTBypassSummer();// TODO When do we want to check this Set as well
 
-
     setUserLevel(3);
-    _periodicTask = new PeriodicSoftTask(&AldesDriver::trigger_reading, 
-                            this, delay_ms, "aldesT");
+    _fastPollTask = new PeriodicSoftTask(&AldesDriver::query_device_fast, 
+                            this, poll_fast_ms, "aldesFast");
+    
+    _slowPollTask = new PeriodicSoftTask(&AldesDriver::query_device_slow, 
+                            this, poll_slow_s * 1000, "aldesSlow");
+
+    
+    ///////////////////// TODEL 
+    //ScheduledTask* testTask = new ScheduledTask(&AldesDriver::setFilterTimer, this, 
+    //                                        10000, std::string("testFilters"), true, (uint16_t)10);
     
 }
 
 void AldesDriver::stop(void)
 {
-    delete _periodicTask;
-    _periodicTask = nullptr;
+    if(_fastPollTask)
+        delete _fastPollTask;
+    if(_slowPollTask)   
+        delete _slowPollTask;
+        
+    _fastPollTask = nullptr;
+    _slowPollTask = nullptr;
 }
 
-void AldesDriver::getDeviceInfos()
+void AldesDriver::query_global_infos()
+{
+    bool res = true;
+    res = res && getDeviceInfos(); 
+    res = res && getSpeedSettings();
+    res = res && getRegulationParams();
+    res = res && getFanConfig();
+
+    if(!res) // TODO deal with error on previous methods
+        ScheduledTask* retryTask = new ScheduledTask(&AldesDriver::query_global_infos, 
+                                            this, 60000, 
+                                            std::string("aldesRetry"));
+
+}
+
+bool AldesDriver::getDeviceInfos()
 {
     mb_data gen_data = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
                                             AldesModbus::REG_PRODUCT_CODE,
@@ -106,10 +140,17 @@ void AldesDriver::getDeviceInfos()
         _data.firm_ver = firm_ver;
 
     ESP_LOGD(ALDES_TAG, "Firmware version : %d", _data.firm_ver);
+
+    if ((_data.product_code == 0xffffffff) ||
+            (_data.serial_num == 0xffffffffffffffff)||
+            (_data.firm_ver== 0xffff))
+            return false;
+
+    return true;
     
 }
 
-void AldesDriver::getSpeedSettings()
+bool AldesDriver::getSpeedSettings()
 {
     mb_data speed_settings = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
                                             AldesModbus::REG_SETTING_MVE_VACATION,
@@ -138,11 +179,26 @@ void AldesDriver::getSpeedSettings()
     ESP_LOGV(ALDES_TAG, "|MVI|    %d    |    %d   |    %d     |    %d   |    %d   |",
             _data.setting_MVI_vacation, _data.setting_MVI_daily, _data.setting_MVI_pushButton, 
             _data.setting_MVI_boost,_data.setting_MVI_maxSpeed);
-    ESP_LOGV(ALDES_TAG, "--------------------------------------------------------------"); 
+    ESP_LOGV(ALDES_TAG, "--------------------------------------------------------------");
+
+
+    if ((_data.setting_MVE_vacation   == 0xffff) ||
+        (_data.setting_MVI_vacation   == 0xffff) ||
+        (_data.setting_MVE_daily      == 0xffff) ||
+        (_data.setting_MVI_daily      == 0xffff) || 
+        (_data.setting_MVE_pushButton == 0xffff) ||
+        (_data.setting_MVI_pushButton == 0xffff) ||
+        (_data.setting_MVE_boost      == 0xffff) ||
+        (_data.setting_MVI_boost      == 0xffff) ||
+        (_data.setting_MVE_maxSpeed   == 0xffff) || 
+        (_data.setting_MVI_maxSpeed   == 0xffff))
+            return false;
+
+    return true;
 
 }
 
-void AldesDriver::getRegulationParams()
+bool AldesDriver::getRegulationParams()
 {
     mb_data regul_params = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
                                             AldesModbus::REG_REGULATION_MODE,
@@ -176,9 +232,16 @@ void AldesDriver::getRegulationParams()
         ESP_LOGV(ALDES_TAG, "| Unbalanced C|  %d |", (int16_t)regul_params);
     ESP_LOGV(ALDES_TAG, "----------------------");
 
-}
+    if ((_data.regulation_mode      == 0xffff) ||
+        (_data.demand_user          == 0xffff) ||
+        (_data.demand_programmer    == 0xffff) ||
+        (_data.bypass_mode          == 0xffff))
+            return false;
 
-void AldesDriver::getFanConfig()
+    return true;
+
+}
+bool AldesDriver::getFanConfig()
 {
     mb_data fan_cfg = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
                                             AldesModbus::REG_FAN_CONFIG,
@@ -193,6 +256,11 @@ void AldesDriver::getFanConfig()
     ESP_LOGV(ALDES_TAG, "|        %d                  |", 
                     _data.fan_config);
     ESP_LOGV(ALDES_TAG, "------------------------------");
+
+    if (_data.fan_config      == 0xffff) 
+            return false;
+
+    return true;
 }
 
 void AldesDriver::getFilterTimerState()
@@ -374,6 +442,8 @@ void AldesDriver::getCurrentState()
     ESP_LOGV(ALDES_TAG, "------------------------");
 }
 
+//////////////////////////////
+
 void AldesDriver::setUserLevel(uint8_t lvl)
 {
     mb_data usr_lvl(2);
@@ -398,6 +468,26 @@ void AldesDriver::setUserLevel(uint8_t lvl)
                                             usr_lvl);
     if (usr_lvl.getSize() > 0)
         ESP_LOGD(ALDES_TAG, "user level : %d", (uint16_t)usr_lvl);
+}
+
+void AldesDriver::setFilterTimer(uint16_t remaining_days)
+{
+    mb_data filter_days(2);
+    filter_days = remaining_days;
+
+    if (_mb_master->writeRegisters(AldesModbus::MB_ALDES_ADDR,
+                                            AldesModbus::REG_FILTER_STATE_DAYS,
+                                            filter_days))
+    {
+        _data.filter_state_days = remaining_days;
+        ESP_LOGD(ALDES_TAG, "***** filter state set to %d ", remaining_days);
+    } else {
+        setUserLevel(3);
+        ScheduledTask* retryFilterTask = new ScheduledTask(&AldesDriver::setFilterTimer, this, 
+                                            10000, std::string("retryFilters"), true, remaining_days);
+    }
+    
+
 }
 
 
