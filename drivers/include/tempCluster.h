@@ -25,9 +25,6 @@ public:
     
     
     void stop(void);
-    
-    /// @brief Event handler when conversion is received
-    static void ads1115_event_handler(uint16_t input, double value);
 
     /// @brief Event handler for periodic task
     /// @brief read the temperature

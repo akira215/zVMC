@@ -58,29 +58,29 @@ menu "Zigbee endpoints"
         help
            Zigbee general endpoint for the device.
 
-    config INPUT_EP
-        int "Air input Endpoint"
+    config INTAKE_OUT_EP
+        int "Out Air Intake Endpoint"
         range 0 1024
         default 2
         help
            Zigbee endpoint for Air input.
     
-    config INTERIOR_EP
-        int "Air interior Endpoint"
+    config EXTRACT_IN_EP
+        int "Interior Air extraction Endpoint"
         range 0 1024
         default 3
         help
             Zigbee endpoint for Air Interior.
     
-    config SUPPLY_EP
-        int "Air supply Endpoint"
+    config SUPPLY_IN_EP
+        int "Interior Air supply Endpoint"
         range 0 1024
         default 4
         help
             Zigbee endpoint for air supply pressure.
 
-    config EXHAUST_EP
-        int "Air Exhaust Endpoint"
+    config EXHAUST_OUT_EP
+        int "Out Air Exhaust Endpoint"
         range 0 1024
         default 5
         help

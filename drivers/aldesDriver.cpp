@@ -275,8 +275,8 @@ void AldesDriver::getFilterTimerState()
     }
     
     ESP_LOGV(ALDES_TAG, "---Filter state---");
-    ESP_LOGV(ALDES_TAG, "|   %  |   days  |");
-    ESP_LOGV(ALDES_TAG, "|  %d |  %d |", 
+    ESP_LOGV(ALDES_TAG, "|   %  |   hours  |");
+    ESP_LOGV(ALDES_TAG, "| %d |   %d   |", 
                 _data.filter_state_percent, _data.filter_state_days);
     ESP_LOGV(ALDES_TAG, "------------------");
 }
@@ -408,6 +408,11 @@ void AldesDriver::getTemperaturesAndFanSpeed()
             _data.airflow_MVE        = data.getDataFrom(8);
             _data.airflow_MVI        = data.getDataFrom(10);
             _data.pressure           = data.getDataFrom(12);
+
+            postEvent(AldesModbus::REG_T_INTAKE_AIR_OUT, _data.T_intake_air_out);
+            postEvent(AldesModbus::REG_T_EXTRACT_AIR_IN, _data.T_extract_air_in);
+            postEvent(AldesModbus::REG_T_SUPPLY_AIR_IN, _data.T_supply_air_in);
+            postEvent(AldesModbus::REG_T_EXHAUST_AIR_OUT, _data.T_exhaust_air_out);
         }
 
     }
@@ -470,21 +475,21 @@ void AldesDriver::setUserLevel(uint8_t lvl)
         ESP_LOGD(ALDES_TAG, "user level : %d", (uint16_t)usr_lvl);
 }
 
-void AldesDriver::setFilterTimer(uint16_t remaining_days)
+void AldesDriver::setFilterTimer(uint16_t hours)
 {
     mb_data filter_days(2);
-    filter_days = remaining_days;
+    filter_days = hours;
 
     if (_mb_master->writeRegisters(AldesModbus::MB_ALDES_ADDR,
                                             AldesModbus::REG_FILTER_STATE_DAYS,
                                             filter_days))
     {
-        _data.filter_state_days = remaining_days;
-        ESP_LOGD(ALDES_TAG, "***** filter state set to %d ", remaining_days);
+        _data.filter_state_days = hours;
+        ESP_LOGD(ALDES_TAG, "***** filter state set to %d ", hours);
     } else {
         setUserLevel(3);
         ScheduledTask* retryFilterTask = new ScheduledTask(&AldesDriver::setFilterTimer, this, 
-                                            10000, std::string("retryFilters"), true, remaining_days);
+                                            10000, std::string("retryFilters"), true, hours);
     }
     
 
@@ -507,12 +512,13 @@ const char* AldesDriver::aldesDeviceFromCode(uint32_t code)
 
 
 /// Events ////////////////////////////////////////////////////////////////////////////
-void AldesDriver::postEvent(uint8_t channel, double value)
+
+void AldesDriver::postEvent(uint16_t channel, int16_t value)
 {
 
-    if(_adsCallbacks.contains(channel)) {
-        ESP_LOGV(ALDES_TAG, "Callback channel %d is found - value: %f", channel, value);
-        ZbNode::_eventLoop->enqueue(std::bind(std::ref(_adsCallbacks.at(channel)), value));
+    if(_aldesCallbacks.contains(channel)) {
+        ESP_LOGV(ALDES_TAG, "Callback channel %d is found - value: %d", channel, value);
+        ZbNode::_eventLoop->enqueue(std::bind(std::ref(_aldesCallbacks.at(channel)), value));
     } else {
         ESP_LOGD(ALDES_TAG, "No Callback registered for channel %d", channel);
     }

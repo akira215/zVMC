@@ -182,16 +182,16 @@ void Main::setup(void)
     ZbEndPoint* generalEp = new ZbEndPoint(CONFIG_GENERAL_EP, 
                             ESP_ZB_HA_METER_INTERFACE_DEVICE_ID);
     
-    ZbEndPoint* inputEp = new ZbEndPoint(CONFIG_INPUT_EP, 
+    ZbEndPoint* intakeOutEp = new ZbEndPoint(CONFIG_INTAKE_OUT_EP, 
                             ESP_ZB_HA_SIMPLE_SENSOR_DEVICE_ID);
 
-    ZbEndPoint* interiorEp = new ZbEndPoint(CONFIG_INTERIOR_EP, 
+    ZbEndPoint* extractInEp = new ZbEndPoint(CONFIG_EXTRACT_IN_EP, 
                             ESP_ZB_HA_SIMPLE_SENSOR_DEVICE_ID);
     
-    ZbEndPoint* supplyEp = new ZbEndPoint(CONFIG_SUPPLY_EP, 
+    ZbEndPoint* supplyInEp = new ZbEndPoint(CONFIG_SUPPLY_IN_EP, 
                             ESP_ZB_HA_SIMPLE_SENSOR_DEVICE_ID);
     
-    ZbEndPoint* exhaustEp = new ZbEndPoint(CONFIG_EXHAUST_EP, 
+    ZbEndPoint* exhaustOutEp = new ZbEndPoint(CONFIG_EXHAUST_OUT_EP, 
                             ESP_ZB_HA_SIMPLE_SENSOR_DEVICE_ID);
 
     
@@ -210,6 +210,21 @@ void Main::setup(void)
                                         CONFIG_MAX_DATA_SIZE);
     
 
+    // Temperatures
+    _TIntakeOut     = new TSensorCluster();
+    _TExtractIn     = new TSensorCluster();
+    _TSupplyIn      = new TSensorCluster();
+    _TExhaustOut    = new TSensorCluster();
+
+    _aldes->registerAldesHandler(&TSensorCluster::setTemperatureMeasuredValue, 
+                        _TIntakeOut, AldesModbus::REG_T_INTAKE_AIR_OUT);
+    _aldes->registerAldesHandler(&TSensorCluster::setTemperatureMeasuredValue, 
+                        _TExtractIn, AldesModbus::REG_T_EXTRACT_AIR_IN);
+    _aldes->registerAldesHandler(&TSensorCluster::setTemperatureMeasuredValue, 
+                        _TSupplyIn, AldesModbus::REG_T_SUPPLY_AIR_IN);
+    _aldes->registerAldesHandler(&TSensorCluster::setTemperatureMeasuredValue, 
+                        _TExhaustOut, AldesModbus::REG_T_EXHAUST_AIR_OUT);
+
     // Upstream channel 2
     _upstreamPressure = new WaterPressureMeasCluster(2);
     
@@ -219,14 +234,6 @@ void Main::setup(void)
     // WaterLevel channel 4
     _waterLevel = new WaterLevelMeasCluster(4);
     
-    // Temperature cluster
-    /*
-    _tempMeasurement  = new ZbTemperatureMeasCluster(false,
-                                ESP_TEMP_SENSOR_MIN_VALUE,
-                                ESP_TEMP_SENSOR_MAX_VALUE,
-                                ESP_ZB_ZCL_TEMP_MEASUREMENT_MEASURED_VALUE_DEFAULT);
-    */
-    _tempMeasurement = new TempCluster();
 
     _timeClient = new ZbTimeClusterClient();
 
@@ -244,29 +251,32 @@ void Main::setup(void)
     generalEp->addCluster(basicCl);
     generalEp->addCluster(_otaCluster);
 
-    inputEp->addCluster(identifyServer2);
-    inputEp->addCluster(_upstreamPressure);
-    inputEp->addCluster(_upstreamPressure->getKfactorCluster());
+    intakeOutEp->addCluster(identifyServer2);
+    intakeOutEp->addCluster(_TIntakeOut);
+    intakeOutEp->addCluster(_upstreamPressure);
+    intakeOutEp->addCluster(_upstreamPressure->getKfactorCluster());
 
-    interiorEp->addCluster(identifyServer3);
-    interiorEp->addCluster(_downstreamPressure);
-    interiorEp->addCluster(_downstreamPressure->getKfactorCluster());
 
-    supplyEp->addCluster(identifyServer4);
-    supplyEp->addCluster(_waterLevel);
-    supplyEp->addCluster(_waterLevel->getKfactorCluster());
+    extractInEp->addCluster(identifyServer3);
+    extractInEp->addCluster(_TExtractIn);
+    extractInEp->addCluster(_downstreamPressure);
+    extractInEp->addCluster(_downstreamPressure->getKfactorCluster());
+
+    supplyInEp->addCluster(identifyServer4);
+    supplyInEp->addCluster(_TSupplyIn);
+    supplyInEp->addCluster(_waterLevel);
+    supplyInEp->addCluster(_waterLevel->getKfactorCluster());
     
-    exhaustEp->addCluster(identifyServer5);
-    exhaustEp->addCluster(identifyClient);
-    exhaustEp->addCluster(_tempMeasurement);
-    exhaustEp->addCluster(_timeClient);
+    exhaustOutEp->addCluster(identifyServer5);
+    exhaustOutEp->addCluster(_TExhaustOut);
+    exhaustOutEp->addCluster(_timeClient);
 
     // Attaching Enpoints  ////////////////////////////////////////////////
     _zbDevice->addEndPoint(*generalEp);
-    _zbDevice->addEndPoint(*inputEp);
-    _zbDevice->addEndPoint(*interiorEp);
-    _zbDevice->addEndPoint(*supplyEp);
-    _zbDevice->addEndPoint(*exhaustEp);
+    _zbDevice->addEndPoint(*intakeOutEp);
+    _zbDevice->addEndPoint(*extractInEp);
+    _zbDevice->addEndPoint(*supplyInEp);
+    _zbDevice->addEndPoint(*exhaustOutEp);
     
     
     // Get task handles from tasks names
@@ -286,8 +296,6 @@ void Main::setup(void)
 
     _aldes->start(CONFIG_VMC_POLLING_MS);
 
-
-    _tempMeasurement->start(1000);
 
 }
 

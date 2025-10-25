@@ -31,7 +31,7 @@ class AldesDriver final
         uint16_t    tempo_filter       = 0xffff; //month
         
         uint16_t    filter_state_percent    = 0xffff; //%
-        uint16_t    filter_state_days       = 0xffff; //days
+        uint16_t    filter_state_days       = 0xffff; //hours since reset
 
         int16_t     T_intake_air_out   = 0xffff; // 0.01 °C
         int16_t     T_extract_air_in   = 0xffff; // 0.01 °C
@@ -101,8 +101,8 @@ public:
     /// @param instance instance of the object for this handler (ex: this)
     /// @param channel of the ads converter that will trigger this 
     template<typename C>
-    void registerAldesHandler(void (C::* func)(double), C* instance, uint8_t channel) {
-        _adsCallbacks.insert({channel, std::bind(func,std::ref(*instance),std::placeholders::_1)}); 
+    void registerAldesHandler(void (C::* func)(int16_t), C* instance, uint16_t channel) {
+        _aldesCallbacks.insert({channel, std::bind(func,std::ref(*instance),std::placeholders::_1)}); 
     }
 
 private:
@@ -124,10 +124,12 @@ private:
     void getTemperaturesAndFanSpeed();
 
     void setUserLevel(uint8_t lvl);
-    void setFilterTimer (uint16_t days);
+    void setFilterTimer (uint16_t hours);
     void testFilter() {setFilterTimer(10);} //TODEL
 
-    void postEvent(uint8_t channel, double value);
+    // All data will be sent as int16_t, cast to uint16_t may be required,
+    // depending on actual value type
+    void postEvent(uint16_t channel, int16_t value);
 
     static const char* aldesDeviceFromCode(uint32_t code);
     
@@ -136,10 +138,10 @@ private:
     AldesData_t _data;
 
     /// @brief Callback type, only one call back for each channel
-    typedef std::function<void(double)> adsCallback_t;
+    typedef std::function<void(int16_t)> aldesCallback_t;
     
     // Map of call back first is channel, second is callback
-    std::map<uint8_t, adsCallback_t> _adsCallbacks;
+    std::map<uint16_t, aldesCallback_t> _aldesCallbacks;
 
     PeriodicSoftTask* _fastPollTask = nullptr;
     PeriodicSoftTask* _slowPollTask = nullptr;

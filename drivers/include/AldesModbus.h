@@ -74,6 +74,7 @@ namespace AldesModbus
         USR_LVL_2       = ( 12054 ), // 0x2F16
         USR_LVL_3       = ( 34102 )  // 0x8536
     };
+
     
     typedef struct {
         uint32_t code;
@@ -92,5 +93,14 @@ namespace AldesModbus
     };
 
     static const char unknown_device[] = "UNKOWN";
+
+    enum {
+        LVL_HOLIDAYS    = (   0 ),  
+        LVL_DAILY       = (   1 ), 
+        LVL_BOOST       = (   2 ), 
+        LVL_GUESTS      = (   3 ),
+        LVL_MAX         = (   4 ),
+        LVL_IGNORE      = ( 255 )    
+    };
 
 }

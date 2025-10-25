@@ -5,8 +5,11 @@
 #include "buttonTask.h" // to del
 #include "blinkTask.h" // to del
 
-#include "tempCluster.h"
 #include "aldesDriver.h"
+
+#include "tSensorCluster.h"
+
+
 
 #include "waterPressureMeasCluster.h"
 #include "waterLevelMeasCluster.h"
@@ -65,10 +68,14 @@ private:
     TaskHandle_t                _eventLoopHandle    = nullptr;
     TaskHandle_t                _mbHandle           = nullptr;
 
+    TSensorCluster*             _TIntakeOut         = nullptr;
+    TSensorCluster*             _TExtractIn         = nullptr;
+    TSensorCluster*             _TSupplyIn          = nullptr;
+    TSensorCluster*             _TExhaustOut        = nullptr;
+
     WaterPressureMeasCluster*   _upstreamPressure   = nullptr;
     WaterPressureMeasCluster*   _downstreamPressure = nullptr;
     WaterLevelMeasCluster*      _waterLevel         = nullptr;
-    TempCluster*                _tempMeasurement    = nullptr;
 
     ZbOtaClusterClient*         _otaCluster         = nullptr;
 
