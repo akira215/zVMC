@@ -109,18 +109,8 @@ void Main::zbDeviceEventHandler(ZbNode::nodeEvent_t event)
             ledFlash(0);
             // Synchronise RTC clock of the device
             _timeClient->syncRTC();
-
-            _checkRTCSync = new PeriodicSoftTask(&Main::checkRTCSync, this, 500);
-
             // Wait for the clock to be synchronized (retry every seconds)
-            //while(!(_timeClient->isSynchronized()))
-            //    vTaskDelay( 1000 / portTICK_PERIOD_MS );
-           
-            //if (_fMeter) {
-            //    ESP_LOGW(TAG,"Clock is finally sync!");
-            //}
-                
-
+            _checkRTCSync = new PeriodicSoftTask(&Main::checkRTCSync, this, 500);
             }
             break;
         case ZbNode::JOINING:
@@ -216,6 +206,8 @@ void Main::setup(void)
     _TSupplyIn      = new TSensorCluster();
     _TExhaustOut    = new TSensorCluster();
 
+    _filterTimerCluster = new FilterTimerCluster();
+
     _aldes->registerAldesHandler(&TSensorCluster::setTemperatureMeasuredValue, 
                         _TIntakeOut, AldesModbus::REG_T_INTAKE_AIR_OUT);
     _aldes->registerAldesHandler(&TSensorCluster::setTemperatureMeasuredValue, 
@@ -224,6 +216,13 @@ void Main::setup(void)
                         _TSupplyIn, AldesModbus::REG_T_SUPPLY_AIR_IN);
     _aldes->registerAldesHandler(&TSensorCluster::setTemperatureMeasuredValue, 
                         _TExhaustOut, AldesModbus::REG_T_EXHAUST_AIR_OUT);
+    
+    _aldes->registerAldesHandler(&FilterTimerCluster::setFilterTempo, 
+                        _filterTimerCluster,AldesModbus::REG_TEMPO_FILTER);
+    _aldes->registerAldesHandler(&FilterTimerCluster::setFilterTimerValue, 
+                        _filterTimerCluster,AldesModbus::REG_FILTER_STATE_DAYS);
+
+                        
 
     // Upstream channel 2
     _upstreamPressure = new WaterPressureMeasCluster(2);
@@ -249,27 +248,29 @@ void Main::setup(void)
     // Attaching Clusters  ////////////////////////////////////////////////
     generalEp->addCluster(identifyServer);
     generalEp->addCluster(basicCl);
-    generalEp->addCluster(_otaCluster);
+    generalEp->addCluster(_timeClient);
+    generalEp->addCluster(_filterTimerCluster);
+    //generalEp->addCluster(_otaCluster);
 
     intakeOutEp->addCluster(identifyServer2);
     intakeOutEp->addCluster(_TIntakeOut);
-    intakeOutEp->addCluster(_upstreamPressure);
-    intakeOutEp->addCluster(_upstreamPressure->getKfactorCluster());
+    //intakeOutEp->addCluster(_upstreamPressure);
+    //intakeOutEp->addCluster(_upstreamPressure->getKfactorCluster());
 
 
     extractInEp->addCluster(identifyServer3);
     extractInEp->addCluster(_TExtractIn);
-    extractInEp->addCluster(_downstreamPressure);
-    extractInEp->addCluster(_downstreamPressure->getKfactorCluster());
+    //extractInEp->addCluster(_downstreamPressure);
+    //extractInEp->addCluster(_downstreamPressure->getKfactorCluster());
 
     supplyInEp->addCluster(identifyServer4);
     supplyInEp->addCluster(_TSupplyIn);
-    supplyInEp->addCluster(_waterLevel);
-    supplyInEp->addCluster(_waterLevel->getKfactorCluster());
+    //supplyInEp->addCluster(_waterLevel);
+    //supplyInEp->addCluster(_waterLevel->getKfactorCluster());
     
     exhaustOutEp->addCluster(identifyServer5);
     exhaustOutEp->addCluster(_TExhaustOut);
-    exhaustOutEp->addCluster(_timeClient);
+    //exhaustOutEp->addCluster(_timeClient);
 
     // Attaching Enpoints  ////////////////////////////////////////////////
     _zbDevice->addEndPoint(*generalEp);

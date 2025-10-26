@@ -8,7 +8,7 @@
 #include "aldesDriver.h"
 
 #include "tSensorCluster.h"
-
+#include "filterTimerCluster.h" 
 
 
 #include "waterPressureMeasCluster.h"
@@ -72,6 +72,8 @@ private:
     TSensorCluster*             _TExtractIn         = nullptr;
     TSensorCluster*             _TSupplyIn          = nullptr;
     TSensorCluster*             _TExhaustOut        = nullptr;
+
+    FilterTimerCluster*         _filterTimerCluster = nullptr;
 
     WaterPressureMeasCluster*   _upstreamPressure   = nullptr;
     WaterPressureMeasCluster*   _downstreamPressure = nullptr;

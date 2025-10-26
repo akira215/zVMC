@@ -216,8 +216,10 @@ bool AldesDriver::getRegulationParams()
                                             AldesModbus::REG_TEMPO_FILTER,
                                             1);
     
-    if (regul_params.getSize() > 0)
+    if (regul_params.getSize() > 0){
         _data.tempo_filter = regul_params;
+        postEvent(AldesModbus::REG_TEMPO_FILTER, (int16_t)(_data.tempo_filter * 30.5));
+    }
     
     regul_params = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
                                             AldesModbus::REG_UNBALANCED_COEF_MVI,
@@ -272,6 +274,7 @@ void AldesDriver::getFilterTimerState()
     {
         _data.filter_state_percent = filterState;
         _data.filter_state_days = filterState.getDataFrom(2);
+        postEvent(AldesModbus::REG_FILTER_STATE_DAYS, (int16_t)(_data.filter_state_days / 24));
     }
     
     ESP_LOGV(ALDES_TAG, "---Filter state---");
@@ -279,6 +282,9 @@ void AldesDriver::getFilterTimerState()
     ESP_LOGV(ALDES_TAG, "| %d |   %d   |", 
                 _data.filter_state_percent, _data.filter_state_days);
     ESP_LOGV(ALDES_TAG, "------------------");
+
+
+    
 }
 
 void AldesDriver::getSeasonDetection()

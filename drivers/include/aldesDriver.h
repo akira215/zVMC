@@ -14,7 +14,6 @@
 #include "periodicSoftTask.h"
 
 
-
 class AldesDriver final
 {
     struct AldesData_t
@@ -31,7 +30,7 @@ class AldesDriver final
         uint16_t    tempo_filter       = 0xffff; //month
         
         uint16_t    filter_state_percent    = 0xffff; //%
-        uint16_t    filter_state_days       = 0xffff; //hours since reset
+        uint16_t    filter_state_days       = 0xffff; //elapsed hours since reset
 
         int16_t     T_intake_air_out   = 0xffff; // 0.01 °C
         int16_t     T_extract_air_in   = 0xffff; // 0.01 °C
@@ -145,7 +144,6 @@ private:
 
     PeriodicSoftTask* _fastPollTask = nullptr;
     PeriodicSoftTask* _slowPollTask = nullptr;
-    ModbusMaster* _mb_master = nullptr;
-      
+    ModbusMaster*    _mb_master = nullptr;
 
 }; // AldesDriver Class
