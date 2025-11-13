@@ -278,7 +278,7 @@ void AldesDriver::getFilterTimerState()
     }
     
     ESP_LOGV(ALDES_TAG, "---Filter state---");
-    ESP_LOGV(ALDES_TAG, "|   %  |   hours  |");
+    ESP_LOGV(ALDES_TAG, "|   \%  |   hours  |");
     ESP_LOGV(ALDES_TAG, "| %d |   %d   |", 
                 _data.filter_state_percent, _data.filter_state_days);
     ESP_LOGV(ALDES_TAG, "------------------");
