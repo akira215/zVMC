@@ -160,40 +160,18 @@ function genWaterLevelOptions() {
 
 // toZigbee ///////////////////////////////////////////////////////////////////////////
 const  tz_VMC = {
-    key: ['Filter_Remaining_Days', 'Air_Intake_Out_T', 'Air_Extract_In_T', 'Air_Supply_In_T', 'Air_Exhaust_Out_T'],
+    key: ['Filter_Remaining_Days', 
+        'Air_Intake_Out_T', 'Air_Extract_In_T', 'Air_Supply_In_T', 'Air_Exhaust_Out_T'],
     
     // convertSet will be call when updating a value from GUI, 
     convertSet: async (entity, key, value, meta) => {
         let payload = {};
-        let newValue = value;
 
         switch(key) {
             case 'Filter_Remaining_Days':
-                logger.info(`************Filter_Remaining_Days new value =[${value}]`);
+                //logger.info(`************Filter_Remaining_Days new value =[${value}]`);
                 payload[ATTR_FILTER_STATE_ID] = {'value': value, 'type': DataType.uint16};
                 await entity.write('msFlowMeasurement', payload, manufCode.zVmc);
-                break;
-
-            case 'switch_actions':
-                newValue = switchActionValues.indexOf(value);
-                payload = {switchActions: newValue};
-                await entity.write('genOnOffSwitchCfg', payload);
-                break;
-
-            case 'relay_mode':
-                newValue = relayModeValues.indexOf(value);
-                payload = {65281: {'value': newValue, 'type': DataType.enum8}};
-                await entity.write('genOnOffSwitchCfg', payload, manufCode.zVmc);
-                break;
-
-            case 'max_pause':
-                payload = {65282: {'value': value, 'type': DataType.uint16}};
-                await entity.write('genOnOffSwitchCfg', payload, manufCode.zVmc);
-                break;
-
-           case 'min_long_press':
-                payload = {65283: {'value': value, 'type': DataType.uint16}};
-                await entity.write('genOnOffSwitchCfg', payload, manufCode.zVmc);
                 break;
 
            default:
@@ -239,6 +217,7 @@ const  tz_VMC = {
     },
 
 };
+
 
 // fromZigbee ///////////////////////////////////////////////////////////////////////////
 const fz_Filters = {
@@ -523,11 +502,42 @@ const fromZigbee_kFactor = {
 
 // Events ///////////////////////////////////////////////////////////////////////////
 
+
+/*
+ case 'Vacation_Setting':
+                payload[ATTR_VACATION_LEVEL_ID] = {'value': value, 'type': DataType.uint16};
+                await entity.write('genAnalogValue', payload, manufCode.zVmc);
+                break;
+            
+             case 'Daily_Setting':
+                payload[ATTR_DAILY_LEVEL_ID] = {'value': value, 'type': DataType.uint16};
+                await entity.write('genAnalogValue', payload, manufCode.zVmc);
+                break;
+
+            case 'Push_Button_Setting':
+                payload[ATTR_PUSHBUTTON_LEVEL_ID] = {'value': value, 'type': DataType.uint16};
+                await entity.write('genAnalogValue', payload, manufCode.zVmc);
+                break;
+
+            case 'Boost_Setting':
+                payload[ATTR_BOOST_LEVEL_ID] = {'value': value, 'type': DataType.uint16};
+                await entity.write('genAnalogValue', payload, manufCode.zVmc);
+                break;
+
+           case 'Max_Speed_Setting':
+                payload[ATTR_MAXSPEED_LEVEL_ID] = {'value': value, 'type': DataType.uint16};
+                await entity.write('genAnalogValue', payload, manufCode.zVmc);
+                break;
+
+*/
+
+
+
 async function onEventCallback(event) {
 
     // Catch deviceOptionsChanged event, triggered by user changing device specific settings on GUI
     if(event.type == 'deviceOptionsChanged'){
-        
+        const endpointGeneral= event.data.device.getEndpoint(GENERAL_EP);
         //logger.info(`zVMC.js deviceOptionsChanged event.data =${JSON.stringify(event.data)}`)
         
         // Warning this event is trigger twice, the 2nd with from field = to field
@@ -545,10 +555,9 @@ async function onEventCallback(event) {
                 if(event.data.state.hasOwnProperty('options'))
                     event.data.state.options['Tempo_Filter'] = newTempo;
                 else
-                    event.data.state.options = {Tempo_Filter: newTempo};
+                    event.data.state.options = { Tempo_Filter: newTempo };
 
                 // Sent the new value to the device so it will be saved on nvm
-                const endpointGeneral= event.data.device.getEndpoint(GENERAL_EP);
     
                 let payload={};
                 payload[ATTR_TEMPO_FILTER_ID] = {'value': newTempo, 'type': DataType.uint16};
@@ -561,6 +570,106 @@ async function onEventCallback(event) {
 
             } // from != to
 
+        }
+
+        if (event.data.to.hasOwnProperty('Vacation_Setting'))
+        {
+            // Event seems to be trigger twice, the second one with same value 'from' and 'to'
+            if (event.data.from['Vacation_Setting'] != event.data.to['Vacation_Setting'])
+            {
+                const newVal = event.data.to['Vacation_Setting'];
+
+                if(event.data.state.hasOwnProperty('options'))
+                    event.data.state.options['Vacation_Setting'] = newVal;
+                else
+                    event.data.state.options = { Vacation_Setting: newVal };
+    
+                let payload={};
+                payload[ATTR_VACATION_LEVEL_ID] = {'value': newVal, 'type': DataType.uint16};
+                
+                await endpointGeneral.write('genAnalogValue', payload, manufCode.zVmc);
+
+            } // from != to
+        }
+
+        if (event.data.to.hasOwnProperty('Daily_Setting'))
+        {
+            // Event seems to be trigger twice, the second one with same value 'from' and 'to'
+            if (event.data.from['Daily_Setting'] != event.data.to['Daily_Setting'])
+            {
+                const newVal = event.data.to['Daily_Setting'];
+
+                if(event.data.state.hasOwnProperty('options'))
+                    event.data.state.options['Daily_Setting'] = newVal;
+                else
+                    event.data.state.options = { Daily_Setting: newVal };
+    
+                let payload={};
+                payload[ATTR_DAILY_LEVEL_ID] = {'value': newVal, 'type': DataType.uint16};
+                
+                await endpointGeneral.write('genAnalogValue', payload, manufCode.zVmc);
+
+            } // from != to
+        } 
+
+        if (event.data.to.hasOwnProperty('Push_Button_Setting'))
+        {
+            // Event seems to be trigger twice, the second one with same value 'from' and 'to'
+            if (event.data.from['Push_Button_Setting'] != event.data.to['Push_Button_Setting'])
+            {
+                const newVal = event.data.to['Push_Button_Setting'];
+
+                if(event.data.state.hasOwnProperty('options'))
+                    event.data.state.options['Push_Button_Setting'] = newVal;
+                else
+                    event.data.state.options = { Push_Button_Setting: newVal };
+
+                let payload={};
+                payload[ATTR_PUSHBUTTON_LEVEL_ID] = {'value': newVal, 'type': DataType.uint16};
+                
+                await endpointGeneral.write('genAnalogValue', payload, manufCode.zVmc);
+
+            } // from != to
+        } 
+
+        if (event.data.to.hasOwnProperty('Boost_Setting'))
+        {
+            // Event seems to be trigger twice, the second one with same value 'from' and 'to'
+            if (event.data.from['Boost_Setting'] != event.data.to['Boost_Setting'])
+            {
+                const newVal = event.data.to['Boost_Setting'];
+
+                if(event.data.state.hasOwnProperty('options'))
+                    event.data.state.options['Boost_Setting'] = newVal;
+                else
+                    event.data.state.options = { Boost_Setting: newVal };
+
+                let payload={};
+                payload[ATTR_BOOST_LEVEL_ID] = {'value': newVal, 'type': DataType.uint16};
+                
+                await endpointGeneral.write('genAnalogValue', payload, manufCode.zVmc);
+
+            } // from != to
+        } 
+
+        if (event.data.to.hasOwnProperty('Max_Speed_Setting'))
+        {
+            // Event seems to be trigger twice, the second one with same value 'from' and 'to'
+            if (event.data.from['Max_Speed_Setting'] != event.data.to['Max_Speed_Setting'])
+            {
+                const newVal = event.data.to['Max_Speed_Setting'];
+
+                if(event.data.state.hasOwnProperty('options'))
+                    event.data.state.options['Max_Speed_Setting'] = newVal;
+                else
+                    event.data.state.options = { Max_Speed_Setting: newVal };
+
+                let payload={};
+                payload[ATTR_MAXSPEED_LEVEL_ID] = {'value': newVal, 'type': DataType.uint16};
+                
+                await endpointGeneral.write('genAnalogValue', payload, manufCode.zVmc);
+
+            } // from != to
         } 
         
         if (event.data.to.hasOwnProperty('k_factor'))
