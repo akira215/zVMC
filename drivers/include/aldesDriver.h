@@ -109,6 +109,9 @@ public:
         _aldesCallbacks.insert({channel, std::bind(func,std::ref(*instance),std::placeholders::_1)}); 
     }
 
+    void setFilterTimer (uint16_t months);
+    void setFilterTempo (uint16_t months);
+
 private:
     bool getDeviceInfos();
     bool getSpeedSettings();
@@ -128,8 +131,7 @@ private:
     void getTemperaturesAndFanSpeed();
 
     void setUserLevel(uint8_t lvl);
-    void setFilterTimer (uint16_t hours);
-    void testFilter() {setFilterTimer(10);} //TODEL
+
 
     // All data will be sent as int16_t, cast to uint16_t may be required,
     // depending on actual value type

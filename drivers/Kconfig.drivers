@@ -44,6 +44,13 @@ endmenu
 
 menu "Modbus ALDES Communication Parameters"
 
+    config WRITE_RETRY
+        int "Number of retry for Modbus write"
+        range 0 65535
+        default 5
+        help
+           If write fail, it will retry this number of time.
+    
     choice
         prompt "Modbus communication format"
         default MB_COMM_MODE_RTU if CONFIG_FMB_COMM_MODE_RTU_EN

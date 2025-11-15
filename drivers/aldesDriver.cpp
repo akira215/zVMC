@@ -118,6 +118,7 @@ void AldesDriver::query_global_infos()
                                             std::string("aldesRetry"));
 
 }
+////////////////////////////////////////////////////////////////////////////////////////////
 
 bool AldesDriver::getDeviceInfos()
 {
@@ -221,7 +222,7 @@ bool AldesDriver::getRegulationParams()
     
     if (regul_params.getSize() > 0){
         _data.tempo_filter = regul_params;
-        postEvent(AldesModbus::REG_TEMPO_FILTER, (int16_t)(_data.tempo_filter * 30.5));
+        postEvent(AldesModbus::REG_TEMPO_FILTER, (int16_t)(_data.tempo_filter));
     }
     
     regul_params = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
@@ -456,7 +457,7 @@ void AldesDriver::getCurrentState()
     ESP_LOGV(ALDES_TAG, "------------------------");
 }
 
-//////////////////////////////
+////////////////////////////// Setters ///////////////////////////////////////////////////////
 
 void AldesDriver::setUserLevel(uint8_t lvl)
 {
@@ -486,24 +487,51 @@ void AldesDriver::setUserLevel(uint8_t lvl)
 
 void AldesDriver::setFilterTimer(uint16_t hours)
 {
-    mb_data filter_days(2);
+    static uint8_t retry = CONFIG_WRITE_RETRY;
+    mb_data filter_days(2); // 2 = number of bytes
     filter_days = hours;
 
     if (_mb_master->writeRegisters(AldesModbus::MB_ALDES_ADDR,
-                                            AldesModbus::REG_FILTER_STATE_DAYS,
-                                            filter_days))
+                                        AldesModbus::REG_FILTER_STATE_DAYS,
+                                        filter_days))
     {
         _data.filter_state_days = hours;
-        ESP_LOGD(ALDES_TAG, "***** filter state set to %d ", hours);
+        retry = CONFIG_WRITE_RETRY;
+        ESP_LOGW(ALDES_TAG, "Filter state set to %d ", hours);
     } else {
-        setUserLevel(3);
-        ScheduledTask* retryFilterTask = new ScheduledTask(&AldesDriver::setFilterTimer, this, 
-                                            10000, std::string("retryFilters"), true, hours);
+        if (retry){
+            retry--;
+            setUserLevel(3);
+            ScheduledTask* retryFilterTask = new ScheduledTask(&AldesDriver::setFilterTimer, this, 
+                                                10000, std::string("retryFilters"), true, hours);
+        }
     }
-    
-
 }
 
+void AldesDriver::setFilterTempo(uint16_t months)
+{
+    static uint8_t retry = CONFIG_WRITE_RETRY;
+    mb_data filter_tempo(2); // 2 = number of bytes
+    filter_tempo = months;
+
+    if (_mb_master->writeRegisters(AldesModbus::MB_ALDES_ADDR,
+                                        AldesModbus::REG_TEMPO_FILTER ,
+                                        filter_tempo))
+    {
+        _data.tempo_filter = months;
+        retry = CONFIG_WRITE_RETRY;
+        ESP_LOGW(ALDES_TAG, "Filter tempo set to %d months", months);
+    } else {
+        if (retry){
+            retry--;
+            setUserLevel(3);
+            ScheduledTask* retryFilterTask = new ScheduledTask(&AldesDriver::setFilterTimer, this, 
+                                                10000, std::string("retryFilterTempo"), true, months);
+        }
+    }
+}
+
+/// /////// ////////////////////////////////////////////////////////////////////////////
 
 
 const char* AldesDriver::aldesDeviceFromCode(uint32_t code)

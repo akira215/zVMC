@@ -14,7 +14,7 @@
 class FilterTimerCluster: public ZbFlowMeasCluster
 {
     typedef enum {
-        ZB_VMC_ATTR_TEMPO_FILTER_VALUE_ID        = 0xff00, // Filter Tempo in month
+        ZB_VMC_ATTR_TEMPO_FILTER_ID        = 0xff00, // Filter Tempo in month
     } zb_vmc_filters_attr_t;
 
     AldesDriver* _aldes = nullptr;
@@ -27,7 +27,7 @@ public:
 
         esp_zb_cluster_add_manufacturer_attr(_attr_list, 
                                             getId(),
-                                            ZB_VMC_ATTR_TEMPO_FILTER_VALUE_ID,
+                                            ZB_VMC_ATTR_TEMPO_FILTER_ID,
                                             CONFIG_MANUF_CODE,
                                             ESP_ZB_ZCL_ATTR_TYPE_S16,
                                             ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE,
@@ -43,10 +43,10 @@ public:
                 &newRemainingDays);
     }
 
-	void setFilterTempo(int16_t maxDays) {
+	void setFilterTempo(int16_t tempoMonths) {
 
-        setAttribute(ZB_VMC_ATTR_TEMPO_FILTER_VALUE_ID,
-                &maxDays, CONFIG_MANUF_CODE); 
+        setAttribute(ZB_VMC_ATTR_TEMPO_FILTER_ID,
+                &tempoMonths, CONFIG_MANUF_CODE); 
     }
 
     void onAttrChange(clusterEvent_t event, 
@@ -58,11 +58,13 @@ public:
         for (auto & el : attrs){
             uint16_t attrId = el.attrId;
             void* value = el.value;
-            if (attrId == ZB_VMC_ATTR_TEMPO_FILTER_VALUE_ID){
+            if (attrId == ZB_VMC_ATTR_TEMPO_FILTER_ID){
 
-                int16_t newValue = *(static_cast<int16_t*>(value));
+                int16_t newTempo = *(static_cast<int16_t*>(value));
                 ESP_LOGW(ZCLUSTER_TAG, "New tempo : %d", 
-                    newValue);
+                    newTempo);
+                
+                _aldes->setFilterTempo((uint16_t)newTempo);
                 
                 //_Kfactor = currentFactor;
                 //_Kfactor.save(); // Save will write in the NVS
