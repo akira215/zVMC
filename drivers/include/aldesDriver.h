@@ -109,7 +109,7 @@ public:
         _aldesCallbacks.insert({channel, std::bind(func,std::ref(*instance),std::placeholders::_1)}); 
     }
 
-    void setFilterTimer (uint16_t months);
+    void setFilterTimer (uint16_t hours);
     void setFilterTempo (uint16_t months);
 
 private:

@@ -14,7 +14,8 @@
 class FilterTimerCluster: public ZbFlowMeasCluster
 {
     typedef enum {
-        ZB_VMC_ATTR_TEMPO_FILTER_ID        = 0xff00, // Filter Tempo in month
+        ZB_VMC_ATTR_FILTER_STATE_ID        = 0xff00, // Filter state in days
+        ZB_VMC_ATTR_TEMPO_FILTER_ID        = 0xff01, // Filter Tempo in month
     } zb_vmc_filters_attr_t;
 
     AldesDriver* _aldes = nullptr;
@@ -23,13 +24,22 @@ public:
     FilterTimerCluster(AldesDriver* aldes):ZbFlowMeasCluster(),  _aldes(aldes) {
 
         // Adding custom attribute for tempo filter (read write required)
-        int16_t value = 0;
+        uint16_t value = 0;
 
+        esp_zb_cluster_add_manufacturer_attr(_attr_list, 
+                                            getId(),
+                                            ZB_VMC_ATTR_FILTER_STATE_ID,
+                                            CONFIG_MANUF_CODE,
+                                            ESP_ZB_ZCL_ATTR_TYPE_U16,
+                                            ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE | 
+                                                ESP_ZB_ZCL_ATTR_ACCESS_REPORTING,
+                                            &value);
+        
         esp_zb_cluster_add_manufacturer_attr(_attr_list, 
                                             getId(),
                                             ZB_VMC_ATTR_TEMPO_FILTER_ID,
                                             CONFIG_MANUF_CODE,
-                                            ESP_ZB_ZCL_ATTR_TYPE_S16,
+                                            ESP_ZB_ZCL_ATTR_TYPE_U16,
                                             ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE,
                                             &value);
 
@@ -39,7 +49,7 @@ public:
 
     void setFilterTimerValue(int16_t newRemainingDays) {
         // will be read as uint16_t
-      	setAttribute(ESP_ZB_ZCL_ATTR_FLOW_MEASUREMENT_VALUE_ID,
+      	setAttribute(ZB_VMC_ATTR_FILTER_STATE_ID,
                 &newRemainingDays);
     }
 
@@ -58,16 +68,25 @@ public:
         for (auto & el : attrs){
             uint16_t attrId = el.attrId;
             void* value = el.value;
-            if (attrId == ZB_VMC_ATTR_TEMPO_FILTER_ID){
 
-                int16_t newTempo = *(static_cast<int16_t*>(value));
-                ESP_LOGW(ZCLUSTER_TAG, "New tempo : %d", 
-                    newTempo);
-                
-                _aldes->setFilterTempo((uint16_t)newTempo);
-                
-                //_Kfactor = currentFactor;
-                //_Kfactor.save(); // Save will write in the NVS
+            switch(attrId) {
+                case ZB_VMC_ATTR_FILTER_STATE_ID: {
+                    uint16_t newVal = *(static_cast<uint16_t*>(value)) * 24;
+                    ESP_LOGD(ZCLUSTER_TAG, "New filter state : %d hours", 
+                        newVal);
+                    _aldes->setFilterTimer(newVal);
+                    break; }
+                case ZB_VMC_ATTR_TEMPO_FILTER_ID: {
+                    uint16_t newTempo = *(static_cast<uint16_t*>(value));
+                    ESP_LOGD(ZCLUSTER_TAG, "New tempo : %d", 
+                        newTempo);
+                    _aldes->setFilterTempo(newTempo);
+                    break; }
+                default: {
+                    ESP_LOGW(ZCLUSTER_TAG, 
+                        "FilterTimerCluster - Unknown remotly changed attribute id: %d", 
+                        attrId);
+                    break; }
             }
         }
 
