@@ -67,6 +67,7 @@ AldesDriver::~AldesDriver()
 {
     stop();
 }
+////////////////////////////////////////////////////////////////////////////////////////////
 
 void AldesDriver::start(uint64_t poll_fast_ms, uint64_t poll_slow_s)
 {
@@ -101,6 +102,7 @@ void AldesDriver::stop(void)
     _fastPollTask = nullptr;
     _slowPollTask = nullptr;
 }
+////////////////////////////////////////////////////////////////////////////////////////////
 
 void AldesDriver::query_global_infos()
 {
@@ -150,6 +152,7 @@ bool AldesDriver::getDeviceInfos()
     
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////
 bool AldesDriver::getSpeedSettings()
 {
     mb_data speed_settings = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,

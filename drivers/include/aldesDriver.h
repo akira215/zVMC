@@ -12,7 +12,7 @@
 
 #include "modbusMaster.h" 
 #include "periodicSoftTask.h"
-
+#include "zbCluster.h"      // require for callbacks on GUI change
 
 class AldesDriver final
 {
@@ -94,7 +94,12 @@ public:
     /// @brief Trigger a reading on the device for filters, ...
     void query_device_slow();
 
-    /// @brief register event handler for this cluster.
+    /// @brief Triggered when remote change a attribute
+    /// @brief will update the Aldes device via modbus
+    void onFilterChange(ZbCluster::clusterEvent_t event, 
+                std::vector<ZbCluster::attribute_t> attrs);
+
+    /// @brief register event handler for this driver
     /// to pass args to the function, use std::bind
     /// @param func pointer to the method ex: &Main::clusterHandler
     /// @param instance instance of the object for this handler (ex: this)

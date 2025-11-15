@@ -50,6 +50,16 @@ menu "Pin layout"
     
 endmenu
 
+menu "Zigbee specific"
+     config MANUF_CODE
+        int "Manufacturer code for custom attributes"
+        range 0 65535
+        default 26518
+        help
+           This code shall not interfer with other zigbee devices.
+
+endmenu
+
 menu "Zigbee endpoints"
      config GENERAL_EP
         int "General device Endpoint"

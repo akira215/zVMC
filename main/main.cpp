@@ -206,7 +206,7 @@ void Main::setup(void)
     _TSupplyIn      = new TSensorCluster();
     _TExhaustOut    = new TSensorCluster();
 
-    _filterTimerCluster = new FilterTimerCluster();
+    _filterTimerCluster = new FilterTimerCluster(_aldes);
 
     _aldes->registerAldesHandler(&TSensorCluster::setTemperatureMeasuredValue, 
                         _TIntakeOut, AldesModbus::REG_T_INTAKE_AIR_OUT);
@@ -221,8 +221,7 @@ void Main::setup(void)
                         _filterTimerCluster,AldesModbus::REG_TEMPO_FILTER);
     _aldes->registerAldesHandler(&FilterTimerCluster::setFilterTimerValue, 
                         _filterTimerCluster,AldesModbus::REG_FILTER_STATE_DAYS);
-
-                        
+          
 
     // Upstream channel 2
     _upstreamPressure = new WaterPressureMeasCluster(2);

@@ -7,61 +7,20 @@
 
 #pragma once
 
-#include "zbCustomCluster.h"
 #include "zbFlowMeasCluster.h"
-/*
-# define ZB_VMC_CLUSTER_ID_FILTER_TIMER 0xfc00 // to move in an enum
-
-// Store remaining days prior to a filter change is required
-class FilterTimerCluster: public ZbCustomCluster
-{
-  typedef enum {
-    ZB_VMC_ATTR_FILTER_STATE_VALUE_ID        = 0x0000, // Current elapsed days
-    ZB_VMC_ATTR_TEMPO_FILTER_VALUE_ID        = 0x0002, // Filter Tempo in month
-  } zb_vmc_filters_attr_t;
-
-
-public:
-    FilterTimerCluster():ZbCustomCluster(false,ZB_VMC_CLUSTER_ID_FILTER_TIMER) {
-        int16_t defaultVal = 0;
-        addCustomAttribute(ZB_VMC_ATTR_FILTER_STATE_VALUE_ID,
-                        &defaultVal,
-                        ESP_ZB_ZCL_ATTR_TYPE_16BIT,
-                        ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE | ESP_ZB_ZCL_ATTR_ACCESS_REPORTING );
-        addCustomAttribute(ZB_VMC_ATTR_TEMPO_FILTER_VALUE_ID,
-                        &defaultVal,
-                        ESP_ZB_ZCL_ATTR_TYPE_16BIT,
-                        ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE);
-    };
-
-
-    void setFilterTimerValue(int16_t newRemainingDays) {
-        // will be read as uint16_t
-      	setAttribute(ZB_VMC_ATTR_FILTER_STATE_VALUE_ID,
-                &newRemainingDays);
-    }
-
-	void setFilterTempo(int16_t maxDays) {
-        // will be read as uint16_t
-      	setAttribute(ZB_VMC_ATTR_TEMPO_FILTER_VALUE_ID,
-                &maxDays);
-    }
-
-}; // FilterTimerCluster
-
-*/
-
+#include "aldesDriver.h"
 
 // Store remaining days prior to a filter change is required
 class FilterTimerCluster: public ZbFlowMeasCluster
 {
     typedef enum {
-        ZB_VMC_ATTR_FILTER_STATE_VALUE_ID        = 0x0000, // Current elapsed days
         ZB_VMC_ATTR_TEMPO_FILTER_VALUE_ID        = 0xff00, // Filter Tempo in month
     } zb_vmc_filters_attr_t;
 
+    AldesDriver* _aldes = nullptr;
+
 public:
-    FilterTimerCluster():ZbFlowMeasCluster() {
+    FilterTimerCluster(AldesDriver* aldes):ZbFlowMeasCluster(),  _aldes(aldes) {
 
         // Adding custom attribute for tempo filter (read write required)
         int16_t value = 0;
@@ -69,13 +28,15 @@ public:
         esp_zb_cluster_add_manufacturer_attr(_attr_list, 
                                             getId(),
                                             ZB_VMC_ATTR_TEMPO_FILTER_VALUE_ID,
-                                            0x1234,
+                                            CONFIG_MANUF_CODE,
                                             ESP_ZB_ZCL_ATTR_TYPE_S16,
                                             ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE,
                                             &value);
 
+        registerEventHandler(&FilterTimerCluster::onAttrChange, this);
 
     };
+
     void setFilterTimerValue(int16_t newRemainingDays) {
         // will be read as uint16_t
       	setAttribute(ESP_ZB_ZCL_ATTR_FLOW_MEASUREMENT_VALUE_ID,
@@ -83,12 +44,31 @@ public:
     }
 
 	void setFilterTempo(int16_t maxDays) {
-        // will be read as uint16_t
-      	//setAttribute(ESP_ZB_ZCL_ATTR_FLOW_MEASUREMENT_MAX_VALUE_ID,
-        //        &maxDays);
-        
+
         setAttribute(ZB_VMC_ATTR_TEMPO_FILTER_VALUE_ID,
-                &maxDays, 0x1234);
+                &maxDays, CONFIG_MANUF_CODE); 
+    }
+
+    void onAttrChange(clusterEvent_t event, 
+                std::vector<attribute_t> attrs) {
+        
+        if (event != ZbCluster::ATTR_UPDATED_REMOTELY)
+            return;
+    
+        for (auto & el : attrs){
+            uint16_t attrId = el.attrId;
+            void* value = el.value;
+            if (attrId == ZB_VMC_ATTR_TEMPO_FILTER_VALUE_ID){
+
+                int16_t newValue = *(static_cast<int16_t*>(value));
+                ESP_LOGW(ZCLUSTER_TAG, "New tempo : %d", 
+                    newValue);
+                
+                //_Kfactor = currentFactor;
+                //_Kfactor.save(); // Save will write in the NVS
+            }
+        }
+
     }
 
 }; // FilterTimerCluster
