@@ -112,6 +112,8 @@ public:
     void setFilterTimer (uint16_t hours);
     void setFilterTempo (uint16_t months);
 
+    void setVacationLevel (uint16_t flowrate);
+
 private:
     bool getDeviceInfos();
     bool getSpeedSettings();

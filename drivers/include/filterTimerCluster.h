@@ -47,18 +47,21 @@ public:
 
     };
 
-    void setFilterTimerValue(int16_t newRemainingDays) {
+    // Called when Modbus is sending data
+    void setFilterTimerValue(int16_t newElapsedDays) {
         // will be read as uint16_t
       	setAttribute(ZB_VMC_ATTR_FILTER_STATE_ID,
-                &newRemainingDays);
+                &newElapsedDays, CONFIG_MANUF_CODE);
     }
 
+    // Called when Modbus is sending data
 	void setFilterTempo(int16_t tempoMonths) {
 
         setAttribute(ZB_VMC_ATTR_TEMPO_FILTER_ID,
                 &tempoMonths, CONFIG_MANUF_CODE); 
     }
 
+    // Called when Zigbee is sending data
     void onAttrChange(clusterEvent_t event, 
                 std::vector<attribute_t> attrs) {
         

@@ -41,8 +41,10 @@ void AldesDriver::query_device_fast()
 // Event handler for periodic soft task
 void AldesDriver::query_device_slow()
 {
+    getRegulationParams();
     getFilterTimerState();  // TODO put in another daily periodicTask
     getSeasonDetection();  // TODO put in another daily periodicTask
+    getSpeedSettings();
 }
 
 
@@ -108,9 +110,9 @@ void AldesDriver::query_global_infos()
 {
     bool res = true;
     res = res && getDeviceInfos(); 
+    res = res && getFanConfig();
     res = res && getSpeedSettings();
     res = res && getRegulationParams();
-    res = res && getFanConfig();
 
     if(!res) // TODO deal with error on previous methods
         ScheduledTask* retryTask = new ScheduledTask(&AldesDriver::query_global_infos, 
@@ -172,6 +174,12 @@ bool AldesDriver::getSpeedSettings()
         _data.setting_MVI_boost      = speed_settings.getDataFrom(14);
         _data.setting_MVE_maxSpeed   = speed_settings.getDataFrom(16);
         _data.setting_MVI_maxSpeed   = speed_settings.getDataFrom(18);
+
+        postEvent(AldesModbus::REG_SETTING_MVE_VACATION, (int16_t)(_data.setting_MVE_vacation));
+        postEvent(AldesModbus::REG_SETTING_MVE_DAILY, (int16_t)(_data.setting_MVE_daily));
+        postEvent(AldesModbus::REG_SETTING_MVE_PUSH_BUTTON, (int16_t)(_data.setting_MVE_pushButton));
+        postEvent(AldesModbus::REG_SETTING_MVE_BOOST, (int16_t)(_data.setting_MVE_boost));
+        postEvent(AldesModbus::REG_SETTING_MVE_MAX_SPEED, (int16_t)(_data.setting_MVE_maxSpeed));
     }
 
     ESP_LOGV(ALDES_TAG, "--------------------------------------------------------------");
@@ -527,6 +535,32 @@ void AldesDriver::setFilterTempo(uint16_t months)
             setUserLevel(3);
             ScheduledTask* retryFilterTask = new ScheduledTask(&AldesDriver::setFilterTimer, this, 
                                                 10000, std::string("retryFilterTempo"), true, months);
+        }
+    }
+}
+
+void AldesDriver::setVacationLevel (uint16_t flowrate)
+{
+    static uint8_t retry = CONFIG_WRITE_RETRY;
+    mb_data level(4); // 2 = number of bytes
+    level = flowrate;
+    level.setValue(flowrate,2); // as REG_SETTING_MVE_VACATION && REG_SETTING_MVI_VACATION
+                                // shall be changed simulteanously, we put 2 times same value
+
+    if (_mb_master->writeRegisters(AldesModbus::MB_ALDES_ADDR,
+                                        AldesModbus::REG_SETTING_MVE_VACATION,
+                                        level))
+    {
+        _data.setting_MVE_vacation = flowrate;
+        _data.setting_MVI_vacation = flowrate;
+        retry = CONFIG_WRITE_RETRY;
+        ESP_LOGW(ALDES_TAG, "Vacation level set to %d m3/h", flowrate);
+    } else {
+        if (retry){
+            retry--;
+            setUserLevel(3);
+            ScheduledTask* retryFilterTask = new ScheduledTask(&AldesDriver::setVacationLevel, this, 
+                                                10000, std::string("retryVacationLevel"), true, flowrate);
         }
     }
 }

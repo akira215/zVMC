@@ -207,6 +207,7 @@ void Main::setup(void)
     _TExhaustOut    = new TSensorCluster();
 
     _filterTimerCluster = new FilterTimerCluster(_aldes);
+    _flowSettingsCluster = new FlowSettingsCluster(_aldes);
 
     _aldes->registerAldesHandler(&TSensorCluster::setTemperatureMeasuredValue, 
                         _TIntakeOut, AldesModbus::REG_T_INTAKE_AIR_OUT);
@@ -221,7 +222,17 @@ void Main::setup(void)
                         _filterTimerCluster,AldesModbus::REG_TEMPO_FILTER);
     _aldes->registerAldesHandler(&FilterTimerCluster::setFilterTimerValue, 
                         _filterTimerCluster,AldesModbus::REG_FILTER_STATE_DAYS);
-          
+    
+    _aldes->registerAldesHandler(&FlowSettingsCluster::setVacationLevel, 
+                        _flowSettingsCluster,AldesModbus::REG_SETTING_MVE_VACATION);
+    _aldes->registerAldesHandler(&FlowSettingsCluster::setDailyLevel, 
+                        _flowSettingsCluster,AldesModbus::REG_SETTING_MVE_DAILY);
+    _aldes->registerAldesHandler(&FlowSettingsCluster::setPushButtonLevel, 
+                        _flowSettingsCluster,AldesModbus::REG_SETTING_MVE_PUSH_BUTTON);
+    _aldes->registerAldesHandler(&FlowSettingsCluster::setBoostLevel, 
+                        _flowSettingsCluster,AldesModbus::REG_SETTING_MVE_BOOST);
+    _aldes->registerAldesHandler(&FlowSettingsCluster::setMaxSpeedLevel, 
+                        _flowSettingsCluster,AldesModbus::REG_SETTING_MVE_MAX_SPEED); 
 
     // Upstream channel 2
     _upstreamPressure = new WaterPressureMeasCluster(2);
@@ -249,6 +260,7 @@ void Main::setup(void)
     generalEp->addCluster(basicCl);
     generalEp->addCluster(_timeClient);
     generalEp->addCluster(_filterTimerCluster);
+    generalEp->addCluster(_flowSettingsCluster);
     //generalEp->addCluster(_otaCluster);
 
     intakeOutEp->addCluster(identifyServer2);
@@ -294,8 +306,7 @@ void Main::setup(void)
 
     vTaskDelay(pdMS_TO_TICKS(7000));
 
-    _aldes->start(CONFIG_VMC_POLLING_MS);
-
+    _aldes->start(CONFIG_VMC_POLLING_MS, CONFIG_VMC_POLLING_GEN_DATA);
 
 }
 
