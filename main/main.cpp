@@ -206,8 +206,17 @@ void Main::setup(void)
     _TSupplyIn      = new TSensorCluster();
     _TExhaustOut    = new TSensorCluster();
 
-    _filterTimerCluster = new FilterTimerCluster(_aldes);
-    _flowSettingsCluster = new FlowSettingsCluster(_aldes);
+    _filterTimerCluster     = new FilterTimerCluster(_aldes);
+    _tBypassCluster         = new BypassCluster(_aldes);
+    _setPointCluster        = new SetPointCluster(_aldes);
+    
+    _airflowMVECluster      = new AirflowCluster();
+    _airflowMVICluster      = new AirflowCluster();
+
+    _flowSettingsCluster    = new FlowSettingsCluster(_aldes);
+
+    _aldes->registerAldesHandler(&SetPointCluster::setDemandPoint, 
+                        _setPointCluster,AldesModbus::REG_DEMAND_USER);
 
     _aldes->registerAldesHandler(&TSensorCluster::setTemperatureMeasuredValue, 
                         _TIntakeOut, AldesModbus::REG_T_INTAKE_AIR_OUT);
@@ -222,6 +231,18 @@ void Main::setup(void)
                         _filterTimerCluster,AldesModbus::REG_TEMPO_FILTER);
     _aldes->registerAldesHandler(&FilterTimerCluster::setFilterTimerValue, 
                         _filterTimerCluster,AldesModbus::REG_FILTER_STATE_DAYS);
+    
+    _aldes->registerAldesHandler(&BypassCluster::setBypassTemperature, 
+                        _tBypassCluster,AldesModbus::REG_T_BYPASS_SUMMER);
+    _aldes->registerAldesHandler(&BypassCluster::setBypassPosition, 
+                        _tBypassCluster,AldesModbus::REG_BYPASS_POSITION);
+    _aldes->registerAldesHandler(&BypassCluster::setSeasonDetected, 
+                        _tBypassCluster,AldesModbus::REG_SEASON_DETECTION);
+    
+    _aldes->registerAldesHandler(&AirflowCluster::setAirflow, 
+                        _airflowMVECluster,AldesModbus::REG_AIRFLOW_MVE);
+    _aldes->registerAldesHandler(&AirflowCluster::setAirflow, 
+                        _airflowMVICluster,AldesModbus::REG_AIRFLOW_MVI);
     
     _aldes->registerAldesHandler(&FlowSettingsCluster::setVacationLevel, 
                         _flowSettingsCluster,AldesModbus::REG_SETTING_MVE_VACATION);
@@ -261,6 +282,8 @@ void Main::setup(void)
     generalEp->addCluster(_timeClient);
     generalEp->addCluster(_filterTimerCluster);
     generalEp->addCluster(_flowSettingsCluster);
+    generalEp->addCluster(_tBypassCluster);
+    generalEp->addCluster(_setPointCluster);
     //generalEp->addCluster(_otaCluster);
 
     intakeOutEp->addCluster(identifyServer2);
@@ -271,12 +294,12 @@ void Main::setup(void)
 
     extractInEp->addCluster(identifyServer3);
     extractInEp->addCluster(_TExtractIn);
-    //extractInEp->addCluster(_downstreamPressure);
+    extractInEp->addCluster(_airflowMVECluster);
     //extractInEp->addCluster(_downstreamPressure->getKfactorCluster());
 
     supplyInEp->addCluster(identifyServer4);
     supplyInEp->addCluster(_TSupplyIn);
-    //supplyInEp->addCluster(_waterLevel);
+    supplyInEp->addCluster(_airflowMVICluster);
     //supplyInEp->addCluster(_waterLevel->getKfactorCluster());
     
     exhaustOutEp->addCluster(identifyServer5);

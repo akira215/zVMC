@@ -9,6 +9,9 @@
 
 #include "tSensorCluster.h"
 #include "filterTimerCluster.h"
+#include "bypassCluster.h"
+#include "setPointCluster.h" 
+#include "airflowCluster.h"
 #include "flowSettingsCluster.h" 
 
 
@@ -75,6 +78,11 @@ private:
     TSensorCluster*             _TExhaustOut        = nullptr;
 
     FilterTimerCluster*         _filterTimerCluster = nullptr;
+    BypassCluster*              _tBypassCluster     = nullptr;
+    SetPointCluster*            _setPointCluster    = nullptr;
+    AirflowCluster*             _airflowMVECluster  = nullptr;
+    AirflowCluster*             _airflowMVICluster  = nullptr;
+
     FlowSettingsCluster*        _flowSettingsCluster = nullptr;
 
     WaterPressureMeasCluster*   _upstreamPressure   = nullptr;

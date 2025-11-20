@@ -112,6 +112,9 @@ public:
     void setFilterTimer (uint16_t hours);
     void setFilterTempo (uint16_t months);
 
+    void setBypassTemperature (int16_t temperature);
+    void setDemandPoint (uint16_t mode);
+
     void setVacationLevel (uint16_t flowrate);
 
 private:

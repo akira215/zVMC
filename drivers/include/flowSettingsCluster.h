@@ -128,7 +128,7 @@ public:
                     uint16_t newVal = *(static_cast<uint16_t*>(value));
                     ESP_LOGW(ZCLUSTER_TAG, "New Vacation level : %d m3/h", 
                         newVal);
-                    //_aldes->setFilterTimer(newVal);
+                    _aldes->setVacationLevel(newVal);
                     break; }
                 case ZB_VMC_ATTR_DAILY_LEVEL_ID: {
                     uint16_t newVal = *(static_cast<uint16_t*>(value));

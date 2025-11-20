@@ -42,9 +42,10 @@ void AldesDriver::query_device_fast()
 void AldesDriver::query_device_slow()
 {
     getRegulationParams();
-    getFilterTimerState();  // TODO put in another daily periodicTask
-    getSeasonDetection();  // TODO put in another daily periodicTask
+    getFilterTimerState();  //
+    getSeasonDetection();  
     getSpeedSettings();
+    getTBypassSummer();
 }
 
 
@@ -222,7 +223,9 @@ bool AldesDriver::getRegulationParams()
         _data.demand_user        = regul_params.getDataFrom(2);
         _data.demand_programmer  = regul_params.getDataFrom(4);
         _data.bypass_mode        = regul_params.getDataFrom(6);
+        postEvent(AldesModbus::REG_DEMAND_USER, (int16_t)(_data.demand_user));
     }
+
 
     regul_params = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
                                             AldesModbus::REG_TEMPO_FILTER,
@@ -265,7 +268,7 @@ bool AldesDriver::getFanConfig()
         _data.fan_config = fan_cfg;
     }
     
-    ESP_LOGV(ALDES_TAG, "-------------Season----------");
+    ESP_LOGV(ALDES_TAG, "-------------Fan config----------");
     ESP_LOGV(ALDES_TAG, "|2:Config A/1:Config B/0:None|");
     ESP_LOGV(ALDES_TAG, "|        %d                  |", 
                     _data.fan_config);
@@ -307,7 +310,7 @@ void AldesDriver::getSeasonDetection()
     if (season.getSize() > 0)
     {
         _data.season_detection = season;
-
+        postEvent(AldesModbus::REG_SEASON_DETECTION, (int16_t)(_data.season_detection));
     }
     
     ESP_LOGV(ALDES_TAG, "-------------Season----------");
@@ -377,7 +380,7 @@ void AldesDriver::getTBypassSummer()
     if (t_bypass.getSize() > 0)
     {
         _data.T_bypass_summer = t_bypass;
-
+        postEvent(AldesModbus::REG_T_BYPASS_SUMMER, (int16_t)(_data.T_bypass_summer));
     }
     
     ESP_LOGV(ALDES_TAG, "-------T° bypass summer-------");
@@ -392,8 +395,10 @@ void AldesDriver::getBypassPosition()
      mb_data bypassPos = _mb_master->readRegisters(AldesModbus::MB_ALDES_ADDR,
                                             AldesModbus::REG_BYPASS_POSITION,
                                             1);
-    if (bypassPos.getSize() > 0)
+    if (bypassPos.getSize() > 0){
         _data.bypass_position    = bypassPos;
+        postEvent(AldesModbus::REG_BYPASS_POSITION, (int16_t)(_data.bypass_position));
+    }
     
     ESP_LOGV(ALDES_TAG, "Bypass position : %d", 
                 _data.bypass_position);
@@ -431,6 +436,8 @@ void AldesDriver::getTemperaturesAndFanSpeed()
             postEvent(AldesModbus::REG_T_EXTRACT_AIR_IN, _data.T_extract_air_in);
             postEvent(AldesModbus::REG_T_SUPPLY_AIR_IN, _data.T_supply_air_in);
             postEvent(AldesModbus::REG_T_EXHAUST_AIR_OUT, _data.T_exhaust_air_out);
+            postEvent(AldesModbus::REG_AIRFLOW_MVE, _data.airflow_MVE);
+            postEvent(AldesModbus::REG_AIRFLOW_MVI, _data.airflow_MVI);
         }
 
     }
@@ -533,8 +540,54 @@ void AldesDriver::setFilterTempo(uint16_t months)
         if (retry){
             retry--;
             setUserLevel(3);
-            ScheduledTask* retryFilterTask = new ScheduledTask(&AldesDriver::setFilterTimer, this, 
+            ScheduledTask* retryFilterTask = new ScheduledTask(&AldesDriver::setFilterTempo, this, 
                                                 10000, std::string("retryFilterTempo"), true, months);
+        }
+    }
+}
+
+void AldesDriver::setBypassTemperature (int16_t temperature)
+{
+    static uint8_t retry = CONFIG_WRITE_RETRY;
+    mb_data bypassTemperature(2); // 2 = number of bytes
+    bypassTemperature = temperature;
+
+    if (_mb_master->writeRegisters(AldesModbus::MB_ALDES_ADDR,
+                                        AldesModbus::REG_T_BYPASS_SUMMER,
+                                        bypassTemperature))
+    {
+        _data.T_bypass_summer = temperature;
+        retry = CONFIG_WRITE_RETRY;
+        ESP_LOGW(ALDES_TAG, "T° Bypass summer set to %d °C", temperature);
+    } else {
+        if (retry){
+            retry--;
+            setUserLevel(3);
+            ScheduledTask* retryTbypassTask = new ScheduledTask(&AldesDriver::setBypassTemperature, this, 
+                                                10000, std::string("retryTbypass"), true, temperature);
+        }
+    }
+}
+
+void AldesDriver::setDemandPoint (uint16_t mode)
+{
+    static uint8_t retry = CONFIG_WRITE_RETRY;
+    mb_data setpoint(2); // 2 = number of bytes
+    setpoint = mode;
+
+    if (_mb_master->writeRegisters(AldesModbus::MB_ALDES_ADDR,
+                                        AldesModbus::REG_DEMAND_USER, //REG_DEMAND_PROGRAMMER
+                                        setpoint))
+    {
+        _data.demand_user = mode;
+        retry = CONFIG_WRITE_RETRY;
+        ESP_LOGW(ALDES_TAG, "demand user set to %d", mode);
+    } else {
+        if (retry){
+            retry--;
+            setUserLevel(3);
+            ScheduledTask* retryTask = new ScheduledTask(&AldesDriver::setDemandPoint, this, 
+                                                10000, std::string("retrySetDemand"), true, mode);
         }
     }
 }
@@ -542,7 +595,7 @@ void AldesDriver::setFilterTempo(uint16_t months)
 void AldesDriver::setVacationLevel (uint16_t flowrate)
 {
     static uint8_t retry = CONFIG_WRITE_RETRY;
-    mb_data level(4); // 2 = number of bytes
+    mb_data level(4); // 4 = number of bytes
     level = flowrate;
     level.setValue(flowrate,2); // as REG_SETTING_MVE_VACATION && REG_SETTING_MVI_VACATION
                                 // shall be changed simulteanously, we put 2 times same value
@@ -559,7 +612,7 @@ void AldesDriver::setVacationLevel (uint16_t flowrate)
         if (retry){
             retry--;
             setUserLevel(3);
-            ScheduledTask* retryFilterTask = new ScheduledTask(&AldesDriver::setVacationLevel, this, 
+            ScheduledTask* retryTask = new ScheduledTask(&AldesDriver::setVacationLevel, this, 
                                                 10000, std::string("retryVacationLevel"), true, flowrate);
         }
     }
