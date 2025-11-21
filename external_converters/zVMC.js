@@ -48,8 +48,8 @@ const ATTR_CURRENT_LEVEL_ID = 0xff00;  // ['Holidays', 'Daily', 'Boost', 'Guests
 const ATTR_FILTER_STATE_ID = 0xff00;  // elapsed days  
 const ATTR_TEMPO_FILTER_ID = 0xff01;  // Number of months
 
-const ATTR_BYPASS_TEMPERATURE_ID    = 0xff00;  
-const ATTR_SEASON_DETECTION_ID      = 0xff01;  
+const ATTR_BYPASS_TEMPERATURE_ID    = 0xff00;  // °C * 100
+const ATTR_SEASON_DETECTION_ID      = 0xff01;  // ['Undefined', 'Winter', 'Summer'];
 
 const ATTR_VACATION_LEVEL_ID        = 0xff00; // Airflow in m3/h
 const ATTR_DAILY_LEVEL_ID           = 0xff01;
@@ -342,10 +342,12 @@ const fz_Tbypass = {
     },
 }
 
+
+// Flow settings and current airflow
 const fz_FlowSettings = {
     
     cluster: 'genAnalogValue',
-    type: ['readResponse'],
+    type: ['attributeReport','readResponse'],
     options: [/*genWaterMeterOptions()*/],
     convert: (model, msg, publish, options, meta) => {
         const result = {};
