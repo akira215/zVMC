@@ -18,16 +18,18 @@ const constants = require('zigbee-herdsman-converters/lib/constants');
 // settings from zigbee2mqtt to access changeEntityOptions
 const settings = require('/app/dist/util/settings');
 
+logger = log.logger;
+const e = exposes.presets;
+const ea = exposes.access;
+
 // To avoid import from Zcl
 const DataType = {
     uint16: 0x21,
-    int16: 0x29,
-    enum8: 0x30,
+    int16:  0x29,
+    enum8:  0x30,
+    single: 0x39,
+    double: 0x3a
 }
-
-const logger = log.logger;
-const e = exposes.presets;
-const ea = exposes.access;
 
 // Global /////////////////////////
 
@@ -41,10 +43,15 @@ const manufCode = {
     zVmc : {manufacturerCode: 0x6796}
 }
 
+const ATTR_CURRENT_LEVEL_ID = 0xff00;  // ['Holidays', 'Daily', 'Boost', 'Guests', 'MaxSpeed'];
+
 const ATTR_FILTER_STATE_ID = 0xff00;  // elapsed days  
 const ATTR_TEMPO_FILTER_ID = 0xff01;  // Number of months
 
-const ATTR_VACATION_LEVEL_ID   = 0xff00; // Airflow in m3/h
+const ATTR_BYPASS_TEMPERATURE_ID    = 0xff00;  
+const ATTR_SEASON_DETECTION_ID      = 0xff01;  
+
+const ATTR_VACATION_LEVEL_ID        = 0xff00; // Airflow in m3/h
 const ATTR_DAILY_LEVEL_ID           = 0xff01;
 const ATTR_PUSHBUTTON_LEVEL_ID      = 0xff02;
 const ATTR_BOOST_LEVEL_ID           = 0xff03;
@@ -52,9 +59,15 @@ const ATTR_MAXSPEED_LEVEL_ID        = 0xff04;
 
 // GUI elements ///////////////////////////////////////////////////////////////////////////
 
+const setpointEnum = ['Holidays', 'Daily', 'Boost', 'Guests', 'MaxSpeed', 'Ignore'];
+const bypassPositionEnum = ['Undefined', 'Open', 'Closed 45°', 'Closed'];
+const detectedSeasonEnum = ['Undefined', 'Winter', 'Summer'];
+
 function genVMC() {
     // The name shall not contain space otherwise it is not reported to HA
     return [
+            exposes.enum('Setpoint', ea.ALL, setpointEnum)
+                .withDescription('Demand User'),
             exposes.numeric('Air_Intake_Out_T', ea.STATE_GET)
                 .withDescription('Air intake temperature outside')
                 .withUnit('°C'),
@@ -67,24 +80,40 @@ function genVMC() {
             exposes.numeric('Air_Exhaust_Out_T', ea.STATE_GET)
                 .withDescription('Air exhaust temperature outside')
                 .withUnit('°C'),
-            exposes.numeric('Filter_Remaining_Days', ea.ALL)
-                .withDescription('Remaining days prior to replace filters')
+            exposes.numeric('Airflow_MVE', ea.STATE_GET)
+                .withDescription('Airflow extraction Fan')
+                .withUnit('m3/h'),
+            exposes.numeric('Airflow_MVI', ea.STATE_GET)
+                .withDescription('Airflow supply Fan')
+                .withUnit('m3/h'),
+            exposes.enum('Bypass_Position', ea.STATE_GET, bypassPositionEnum)
+                .withDescription('Current Bypass Position'),
+            exposes.enum('Detected_Season', ea.STATE_GET, detectedSeasonEnum)
+                .withDescription('If Tavg > 19°C or Tmax > 28°C and Tmin > 7° : Summer / If Tavg <19°C or Tmax<28°C : Winter (24h)'),  
+            exposes.numeric('Filter_Elapsed_Days', ea.ALL)
+                .withDescription('Elapsed days since filters replacement')
                 .withUnit('days'),
+            exposes.numeric('Tempo_Filter', ea.ALL)
+                .withValueMin(3)
+                .withValueMax(12)
+                .withDescription('Number of month prior to change filter')
+                .withUnit('months')
         ];
 };
 
 // Options ///////////////////////////////////////////////////////////////////////////
 
-// Option nb month for filter change
-function optionTempoFilter() {
-    return  exposes.numeric('Tempo_Filter', ea.ALL)
-                .withValueMin(3)
-                .withValueMax(12)
-                .withDescription('Number of month prior to change filter')
-                .withUnit('months')
+// Option T° bypass Summer
+function optionTbypassSetting() {
+    return  exposes.numeric('Temperature_Bypass_Summer', ea.ALL)
+                .withValueMin(19)
+                .withValueMax(28)
+                .withValueStep(0.1)
+                .withDescription('Temperature of Exhaust Extracted Air that trigger the opening of bypass')
+                .withUnit('°C')
 };
 
-// Option nb month for filter change
+// Option Airflow for mode
 function optionVacationSetting() {
     return  exposes.numeric('Vacation_Setting', ea.ALL)
                 .withValueMin(10)
@@ -93,7 +122,7 @@ function optionVacationSetting() {
                 .withUnit('m3/h')
 };
 
-// Option nb month for filter change
+// Option Airflow for mode
 function optionDailySetting() {
     return  exposes.numeric('Daily_Setting', ea.ALL)
                 .withValueMin(10)
@@ -102,7 +131,7 @@ function optionDailySetting() {
                 .withUnit('m3/h')
 };
 
-// Option nb month for filter change
+// Option Airflow for mode
 function optionPushButtonSetting() {
     return  exposes.numeric('Push_Button_Setting', ea.ALL)
                 .withValueMin(10)
@@ -111,7 +140,7 @@ function optionPushButtonSetting() {
                 .withUnit('m3/h')
 };
 
-// Option nb month for filter change
+// Option Airflow for mode
 function optionBoostSetting() {
     return  exposes.numeric('Boost_Setting', ea.ALL)
                 .withValueMin(10)
@@ -120,7 +149,7 @@ function optionBoostSetting() {
                 .withUnit('m3/h')
 };
 
-// Option nb month for filter change
+// Option Airflow for mode
 function optionMaxSpeedSetting() {
     return  exposes.numeric('Max_Speed_Setting', ea.ALL)
                 .withValueMin(10)
@@ -129,56 +158,45 @@ function optionMaxSpeedSetting() {
                 .withUnit('m3/h')
 };
 
-// Options for the k factor of the water meter (L/pule)
-function genWaterMeterOptions() {
-    return  exposes.numeric('k_factor', ea.ALL)
-                .withValueMin(0)
-                .withDescription('Water meter kFactor')
-                .withUnit('L/pulse')
-};
-
-function genUpstreamPressureOptions() {
-    return  exposes.numeric('upstream_pressure_calibration', ea.ALL)
-                .withValueMin(0)
-                .withDescription('Sensor calibrating factor for upstream pressure (Pascal per Volt)')
-                .withUnit('Pa/V')
-};
-
-function genDownstreamPressureOptions() {
-    return  exposes.numeric('downstream_pressure_calibration', ea.ALL)
-                .withValueMin(0)
-                .withDescription('Sensor calibrating factor for downstream pressure (Pascal per Volt)')
-                .withUnit('Pa/V')
-};
-
-function genWaterLevelOptions() {
-    return  exposes.numeric('water_level_calibration', ea.ALL)
-                .withValueMin(0)
-                .withDescription('Sensor calibrating factor for water level (% per Volt)')
-                .withUnit('%/V')
-};
 
 // toZigbee ///////////////////////////////////////////////////////////////////////////
 const  tz_VMC = {
-    key: ['Filter_Remaining_Days', 
+    key: ['Setpoint', 'Bypass_Position', 'Detected_Season', 'Filter_Elapsed_Days', 'Tempo_Filter',
+        'Airflow_MVE', 'Airflow_MVI',
         'Air_Intake_Out_T', 'Air_Extract_In_T', 'Air_Supply_In_T', 'Air_Exhaust_Out_T'],
     
-    // convertSet will be call when updating a value from GUI, 
+    // convertSet will be called when user update a value from GUI, 
     convertSet: async (entity, key, value, meta) => {
         let payload = {};
 
         switch(key) {
-            case 'Filter_Remaining_Days':
-                //logger.info(`************Filter_Remaining_Days new value =[${value}]`);
+            case 'Setpoint':
+                //logger.info(`Setpoint new value = [${value}]`);
+                let newValue = 255;
+
+                if (value == 'Ignore'){
+                    newValue = 255 // refer to Aldes datasheet
+                } else {
+                    newValue = setpointEnum.indexOf(value);
+                }
+                await entity.write('genMultistateValue', { presentValue: newValue });
+                break;
+
+            case 'Filter_Elapsed_Days':
                 payload[ATTR_FILTER_STATE_ID] = {'value': value, 'type': DataType.uint16};
                 await entity.write('msFlowMeasurement', payload, manufCode.zVmc);
                 break;
 
-           default:
+            case 'Tempo_Filter':
+                payload[ATTR_TEMPO_FILTER_ID] = {'value': value, 'type': DataType.uint16};
+                await entity.write('msFlowMeasurement', payload, manufCode.zVmc);
+                break;
+
+            default:
                break;
        }
 
-       result = {state: {[key]: value}}
+       result = {state: {[key]: value}};
        return result;
     },
 
@@ -192,26 +210,55 @@ const  tz_VMC = {
         const endpointSupplyIn      = meta.device.getEndpoint(SUPPLY_IN_EP);
         const endpointExhaustOut    = meta.device.getEndpoint(EXHAUST_OUT_EP);
 
-        // If temperature actualization button has been pressed
-        if(key == 'Filter_Remaining_Days') {
-            await endpointGeneral.read('msFlowMeasurement', [ATTR_TEMPO_FILTER_ID, ATTR_FILTER_STATE_ID], manufCode.zVmc);
-            //await endpointGeneral.read('msFlowMeasurement', [ATTR_FILTER_STATE_ID], manufCode.zVmc);
-        }
+        // If actualization button has been pressed
+        switch(key) {
+            case 'Setpoint':
+                // read current level instead of user demand
+                await endpointGeneral.read('genMultistateValue', [ATTR_CURRENT_LEVEL_ID], manufCode.zVmc);
+                break;        
+            
+            case 'Air_Intake_Out_T':
+                await endpointIntakeOut.read('msTemperatureMeasurement', ['measuredValue']);
+                break;
+            
+            case 'Air_Extract_In_T':
+                await endpointExtractIn.read('msTemperatureMeasurement', ['measuredValue']);
+                break;
+            
+            case 'Air_Supply_In_T':
+                await endpointSupplyIn.read('msTemperatureMeasurement', ['measuredValue']);
+                break;
 
-        if(key == 'Air_Intake_Out_T') {
-            await endpointIntakeOut.read('msTemperatureMeasurement', ['measuredValue']);
-        }
+            case 'Air_Exhaust_Out_T':
+                await endpointExhaustOut.read('msTemperatureMeasurement', ['measuredValue']);
+                break;
+            
+            case 'Bypass_Position':
+                await endpointGeneral.read('genAnalogInput', ['presentValue']);
+                break;
 
-        if(key == 'Air_Extract_In_T') {
-            await endpointExtractIn.read('msTemperatureMeasurement', ['measuredValue']);
-        }
+            case 'Detected_Season':
+                await endpointGeneral.read('genAnalogInput', [ATTR_SEASON_DETECTION_ID], manufCode.zVmc);
+                break;
 
-        if(key == 'Air_Supply_In_T') {
-            await endpointSupplyIn.read('msTemperatureMeasurement', ['measuredValue']);
-        }
+            case 'Filter_Elapsed_Days':
+                await endpointGeneral.read('msFlowMeasurement', [ATTR_TEMPO_FILTER_ID, ATTR_FILTER_STATE_ID], manufCode.zVmc);
+                break;
 
-        if(key == 'Air_Exhaust_Out_T') {
-            await endpointExhaustOut.read('msTemperatureMeasurement', ['measuredValue']);
+            case 'Tempo_Filter':
+                await endpointGeneral.read('msFlowMeasurement', [ATTR_TEMPO_FILTER_ID], manufCode.zVmc); 
+                break;
+
+            case 'Airflow_MVE':
+                await endpointExtractIn.read('genAnalogValue', ['presentValue']); 
+                break;
+            
+            case 'Airflow_MVI':
+                await endpointSupplyIn.read('genAnalogValue', ['presentValue']); 
+                break;
+           
+            default:
+               break;
         }
 
     },
@@ -220,6 +267,29 @@ const  tz_VMC = {
 
 
 // fromZigbee ///////////////////////////////////////////////////////////////////////////
+const fz_Setpoint = {
+    
+    cluster: 'genMultistateValue',
+    type: ['attributeReport', 'readResponse'],
+    options: [],
+    convert: (model, msg, publish, options, meta) => {
+        const result = {};
+        
+        // When remote device send the attribute of current level
+        if (msg.data.hasOwnProperty(ATTR_CURRENT_LEVEL_ID)) {  
+
+            logger.info(`*********zVMC.js Setpoint read response =${msg.data[ATTR_CURRENT_LEVEL_ID]}`);
+            if (msg.data[ATTR_CURRENT_LEVEL_ID] > 4){
+                result['Setpoint'] = 'Ignore';
+            } else {
+                result['Setpoint'] = setpointEnum[msg.data[ATTR_CURRENT_LEVEL_ID]];
+            }
+        }
+
+        return result;
+    },
+}
+
 const fz_Filters = {
     
     cluster: 'msFlowMeasurement',
@@ -229,30 +299,43 @@ const fz_Filters = {
         const result = {};
         //logger.info(`*********zVMC.js convert data =${JSON.stringify(msg.data)}`);
         // deviceAddr is also available with options.ID or options.friendly_name
-        const deviceIeeAdd = msg.device.getEndpoint(GENERAL_EP).deviceIeeeAddress;
+        // const deviceIeeAdd = msg.device.getEndpoint(GENERAL_EP).deviceIeeeAddress;
         
-        // When remote device send the attribute tempo filter (triggered by a read on filter remaining)
+        // When remote device send the attribute tempo filter (triggered by a read on filter elapsed)
         if (msg.data.hasOwnProperty(ATTR_TEMPO_FILTER_ID)) {        
-            const newTempo = msg.data[ATTR_TEMPO_FILTER_ID];
-            settings.changeEntityOptions(deviceIeeAdd, { Tempo_Filter: newTempo });
+            result['Tempo_Filter'] = msg.data[ATTR_TEMPO_FILTER_ID];
         }
 
         // Occured when a read from Zigbee occured. Device only send number of tick that occured,
         // and reset to 0 its tick count each day at 00:00
         if (msg.data.hasOwnProperty(ATTR_FILTER_STATE_ID)) {
-            let tempo = 12;
-            
-            if (options.hasOwnProperty('Tempo_Filter')){
-                tempo = options.Tempo_Filter;
-             }
+            result[`Filter_Elapsed_Days`] = msg.data[ATTR_FILTER_STATE_ID];
+        }
 
-            const elapsedDays = msg.data[ATTR_FILTER_STATE_ID];
+        return result;
+    },
+}
 
-            //Remaining days is the difference
-            const currentState = Math.round(tempo * 30.5) - elapsedDays;
-            //logger.info(`tempo days =${Math.round(tempo * 30.5)}  elapsed days =${elapsedDays} => current=${currentState}`)
-            
-            result[`Filter_Remaining_Days`] = currentState;
+const fz_Tbypass = {
+    
+    cluster: 'genAnalogInput',
+    type: ['attributeReport', 'readResponse'],
+    options: [/*genWaterMeterOptions()*/],
+    convert: (model, msg, publish, options, meta) => {
+        const result = {};
+        const deviceIeeAdd = msg.device.getEndpoint(GENERAL_EP).deviceIeeeAddress;
+
+        // When remote device send the attribute for T° bypass summer (triggered by a read only on reconfigure)
+        if (msg.data.hasOwnProperty(ATTR_BYPASS_TEMPERATURE_ID)) {      
+            settings.changeEntityOptions(deviceIeeAdd, { Temperature_Bypass_Summer: (msg.data[ATTR_BYPASS_TEMPERATURE_ID] / 100) });
+        }
+
+        if (msg.data.hasOwnProperty('presentValue')) {      
+           result['Bypass_Position'] = bypassPositionEnum[Math.round(msg.data['presentValue'])];
+        }
+
+        if (msg.data.hasOwnProperty(ATTR_SEASON_DETECTION_ID)) {      
+            result['Detected_Season'] = detectedSeasonEnum[msg.data[ATTR_SEASON_DETECTION_ID]];
         }
 
         return result;
@@ -268,28 +351,49 @@ const fz_FlowSettings = {
         const result = {};
         //logger.info(`*********zVMC.js convert data =${JSON.stringify(msg.data)}`);
         // deviceAddr is also available with options.ID or options.friendly_name
-        const deviceIeeAdd = msg.device.getEndpoint(GENERAL_EP).deviceIeeeAddress;
+        if(msg.endpoint.ID == GENERAL_EP)
+        {
+            const deviceIeeAdd = msg.device.getEndpoint(GENERAL_EP).deviceIeeeAddress;
         
-        // When remote device send the attribute tempo filter (triggered by a read on filter remaining)
-        if (msg.data.hasOwnProperty(ATTR_VACATION_LEVEL_ID)) {        
-            settings.changeEntityOptions(deviceIeeAdd, { Vacation_Setting: msg.data[ATTR_VACATION_LEVEL_ID] });
+            // When remote device send the attribute tempo filter (triggered by a read on filter remaining)
+            if (msg.data.hasOwnProperty(ATTR_VACATION_LEVEL_ID)) {        
+                settings.changeEntityOptions(deviceIeeAdd, { Vacation_Setting: msg.data[ATTR_VACATION_LEVEL_ID] });
+            }
+
+            if (msg.data.hasOwnProperty(ATTR_DAILY_LEVEL_ID)) {        
+                settings.changeEntityOptions(deviceIeeAdd, { Daily_Setting: msg.data[ATTR_DAILY_LEVEL_ID] });
+            }
+
+            if (msg.data.hasOwnProperty(ATTR_PUSHBUTTON_LEVEL_ID)) {        
+                settings.changeEntityOptions(deviceIeeAdd, { Push_Button_Setting: msg.data[ATTR_PUSHBUTTON_LEVEL_ID] });
+            }
+
+            if (msg.data.hasOwnProperty(ATTR_BOOST_LEVEL_ID)) {        
+                settings.changeEntityOptions(deviceIeeAdd, { Boost_Setting: msg.data[ATTR_BOOST_LEVEL_ID] });
+            }
+
+            if (msg.data.hasOwnProperty(ATTR_MAXSPEED_LEVEL_ID)) {        
+                settings.changeEntityOptions(deviceIeeAdd, { Max_Speed_Setting: msg.data[ATTR_MAXSPEED_LEVEL_ID] });
+            }
         }
 
-        if (msg.data.hasOwnProperty(ATTR_DAILY_LEVEL_ID)) {        
-            settings.changeEntityOptions(deviceIeeAdd, { Daily_Setting: msg.data[ATTR_DAILY_LEVEL_ID] });
+        if(msg.endpoint.ID == EXTRACT_IN_EP)
+        {
+            // When remote device send the attribute tempo filter (triggered by a read on filter remaining)
+            if (msg.data.hasOwnProperty('presentValue')) {        
+                result['Airflow_MVE'] = msg.data['presentValue'];
+            }
         }
 
-        if (msg.data.hasOwnProperty(ATTR_PUSHBUTTON_LEVEL_ID)) {        
-            settings.changeEntityOptions(deviceIeeAdd, { Push_Button_Setting: msg.data[ATTR_PUSHBUTTON_LEVEL_ID] });
+        if(msg.endpoint.ID == SUPPLY_IN_EP)
+        {
+            // When remote device send the attribute tempo filter (triggered by a read on filter remaining)
+            if (msg.data.hasOwnProperty('presentValue')) {        
+                result['Airflow_MVI'] = msg.data['presentValue'];
+            }
         }
-
-        if (msg.data.hasOwnProperty(ATTR_BOOST_LEVEL_ID)) {        
-            settings.changeEntityOptions(deviceIeeAdd, { Boost_Setting: msg.data[ATTR_BOOST_LEVEL_ID] });
-        }
-
-        if (msg.data.hasOwnProperty(ATTR_MAXSPEED_LEVEL_ID)) {        
-            settings.changeEntityOptions(deviceIeeAdd, { Max_Speed_Setting: msg.data[ATTR_MAXSPEED_LEVEL_ID] });
-        }
+       
+       
 
         return result;
     },
@@ -339,199 +443,8 @@ const fz_Temperatures = {
 }
 
 
-const fromZigbee_Metering = {
-    
-    cluster: 'msFlowMeasurement',
-    type: ['attributeReport', 'readResponse'],
-    options: [genWaterMeterOptions()],
-    convert: (model, msg, publish, options, meta) => {
-        const result = {};
-        // logger.info(`zVMC.js convert meta =${JSON.stringify(meta)}`);
-
-        // Occured when a read from Zigbee occured. Device only send number of tick that occured,
-        // and reset to 0 its tick count each day at 00:00
-        if (msg.data.hasOwnProperty('measuredValue')) {
-            const multiplier = options.k_factor;
-            const data = msg.data['measuredValue'];
-
-            //Multiply by the divisor and divide again to avoid BigInt rounding to 0
-            const currentSummDisplayed = (Number(data) * multiplier);
-            
-            result[`water_consumed`] = currentSummDisplayed;
-        }
-
-        return result;
-    },
-}
-
-const fromZigbee_Pressure = {
-    
-    cluster: 'msPressureMeasurement',
-    type: ['attributeReport', 'readResponse'],
-    options: [ genUpstreamPressureOptions(), genDownstreamPressureOptions() ],
-    convert: (model, msg, publish, options, meta) => {
-        const result = {};
-
-        //logger.info(`zVMC.js convert msg =${JSON.stringify(msg)}`);
-
-        // Occured when a read from Zigbee occured. Device send int16, so calibration factor
-        // is required only on device side. We just use z2m GUI to adjust calbration factor
-        // value is send in kPa, adjusting to get bars
-        if (msg.data.hasOwnProperty('measuredValue')) {
-
-            // Get endpoint list of device to read oposite property to compute Delta
-            const ep_list = msg.device._endpoints;
-
-            if(msg.endpoint.ID == INTAKE_OUT_EP)
-            {
-                const up_value = msg.data['measuredValue'];
-                
-                // Get the oposite endpoint to compute detlaP
-                const down_ep = ep_list.find(x => x.ID === EXTRACT_IN_EP);
-                const down_value = down_ep?.clusters?.msPressureMeasurement?.attributes?.measuredValue;
-
-                result[`upstream_pressure`] = up_value / 100;
-                
-            }
-
-            if(msg.endpoint.ID == EXTRACT_IN_EP)
-            {
-                const down_value = msg.data['measuredValue'];
-
-                // Get the oposite endpoint to compute detlaP
-                const up_ep = ep_list.find(x => x.ID === INTAKE_OUT_EP);
-                const up_value = up_ep?.clusters?.msPressureMeasurement?.attributes?.measuredValue;
-
-                result[`downstream_pressure`] = down_value / 100;
-            }
-
-        }
-
-        return result;
-    },
-}
-
-const fromZigbee_Level = {
-    
-    cluster: 'msRelativeHumidity',
-    type: ['attributeReport', 'readResponse'],
-    options: [genWaterLevelOptions()],
-    convert: (model, msg, publish, options, meta) => {
-        const result = {};
-        // logger.info(`zVMC.js convert meta =${JSON.stringify(meta)}`);
-
-        // Occured when a read from Zigbee occured. Device only send number of tick that occured,
-        // and reset to 0 its tick count each time value is reported to z2m
-        if (msg.data.hasOwnProperty('measuredValue')) {
-            const data = msg.data['measuredValue'];
-            result[`water_level`] = data;
-        }
-
-        return result;
-    },
-}
-
-
-// This is triggered after device pairing (if loosing connection)
-// Factors are saved on the device itself and read by z2m to update options the values
-const fromZigbee_kFactor = {
-    
-    cluster: 'genAnalogValue',
-    type: ['attributeReport', 'readResponse'],
-    options: [genWaterMeterOptions()],
-    convert: (model, msg, publish, options, meta) => {
-        const result = {};
-        //logger.info(`zVMC.js fromZigbee_kFactor convert msg =${JSON.stringify(msg)}`);
-
-        //Multiplier is read only on configure device, we use this to set up the optional setting from the state
-        if (msg.data.hasOwnProperty('presentValue')) {
-            
-            // deviceAddr is also available with options.ID or options.friendly_name
-            const deviceIeeAdd = msg.device.getEndpoint(GENERAL_EP).deviceIeeeAddress;
-
-            if(msg.endpoint.ID == GENERAL_EP)
-            {
-                
-                let newK = 1;
-                if (options.hasOwnProperty('k_factor'))
-                    newK = options.k_factor;
-                else
-                    newK =msg.data['presentValue'];
-            
-                settings.changeEntityOptions(deviceIeeAdd, { k_factor: newK });
-            }
-
-            if(msg.endpoint.ID == INTAKE_OUT_EP)
-            {
-                let newK = 1;
-                if (options.hasOwnProperty('upstream_pressure_calibration'))
-                    newK = options.upstream_pressure_calibration;
-                else
-                    newK = msg.data['presentValue'];
-            
-                settings.changeEntityOptions(deviceIeeAdd, { upstream_pressure_calibration: newK });
-            }
-
-            if(msg.endpoint.ID == EXTRACT_IN_EP)
-            {
-                let newK = 1;
-                if (options.hasOwnProperty('downstream_pressure_calibration'))
-                    newK = options.downstream_pressure_calibration;
-                else
-                    newK = msg.data['presentValue'];
-
-                settings.changeEntityOptions(deviceIeeAdd, { downstream_pressure_calibration: newK });
-            }
-
-            if(msg.endpoint.ID == SUPPLY_IN_EP)
-            {
-                let newK = 1;
-                if (options.hasOwnProperty('water_level_calibration'))
-                    newK = options.water_level_calibration;
-                else
-                    newK = msg.data['presentValue'];
-
-                settings.changeEntityOptions(deviceIeeAdd, { water_level_calibration: newK });
-            }
-            
-        }
-
-        return result;
-    },
-}
 
 // Events ///////////////////////////////////////////////////////////////////////////
-
-
-/*
- case 'Vacation_Setting':
-                payload[ATTR_VACATION_LEVEL_ID] = {'value': value, 'type': DataType.uint16};
-                await entity.write('genAnalogValue', payload, manufCode.zVmc);
-                break;
-            
-             case 'Daily_Setting':
-                payload[ATTR_DAILY_LEVEL_ID] = {'value': value, 'type': DataType.uint16};
-                await entity.write('genAnalogValue', payload, manufCode.zVmc);
-                break;
-
-            case 'Push_Button_Setting':
-                payload[ATTR_PUSHBUTTON_LEVEL_ID] = {'value': value, 'type': DataType.uint16};
-                await entity.write('genAnalogValue', payload, manufCode.zVmc);
-                break;
-
-            case 'Boost_Setting':
-                payload[ATTR_BOOST_LEVEL_ID] = {'value': value, 'type': DataType.uint16};
-                await entity.write('genAnalogValue', payload, manufCode.zVmc);
-                break;
-
-           case 'Max_Speed_Setting':
-                payload[ATTR_MAXSPEED_LEVEL_ID] = {'value': value, 'type': DataType.uint16};
-                await entity.write('genAnalogValue', payload, manufCode.zVmc);
-                break;
-
-*/
-
-
 
 async function onEventCallback(event) {
 
@@ -545,31 +458,24 @@ async function onEventCallback(event) {
         if ((!event.data.hasOwnProperty('from'))||(!event.data.hasOwnProperty('to')))
             return; 
 
-        if (event.data.to.hasOwnProperty('Tempo_Filter'))
+        if (event.data.to.hasOwnProperty('Temperature_Bypass_Summer'))
         {
             // Event seems to be trigger twice, the second one with same value 'from' and 'to'
-            if (event.data.from['Tempo_Filter'] != event.data.to['Tempo_Filter'])
+            if (event.data.from['Temperature_Bypass_Summer'] != event.data.to['Temperature_Bypass_Summer'])
             {
-                const newTempo = event.data.to['Tempo_Filter'];
-
+                const newVal = event.data.to['Temperature_Bypass_Summer'];
+                logger.info(`*******zVMC.js deviceOptionsChanged Temperature_Bypass_Summer =${newVal}` )
                 if(event.data.state.hasOwnProperty('options'))
-                    event.data.state.options['Tempo_Filter'] = newTempo;
+                    event.data.state.options['Temperature_Bypass_Summer'] = newVal;
                 else
-                    event.data.state.options = { Tempo_Filter: newTempo };
+                    event.data.state.options = { Temperature_Bypass_Summer: newVal };
 
-                // Sent the new value to the device so it will be saved on nvm
-    
                 let payload={};
-                payload[ATTR_TEMPO_FILTER_ID] = {'value': newTempo, 'type': DataType.uint16};
-                
-                logger.info(`*********write to device =${JSON.stringify(payload)}`);
-                await endpointGeneral.write('msFlowMeasurement', payload, manufCode.zVmc);
-
-                // Update remaining days accordingly
-                await endpointGeneral.read('msFlowMeasurement', [ATTR_FILTER_STATE_ID], manufCode.zVmc);
+                payload[ATTR_BYPASS_TEMPERATURE_ID] = {'value': newVal * 100, 'type': DataType.uint16};
+    
+                await endpointGeneral.write('genAnalogInput',  payload, manufCode.zVmc);
 
             } // from != to
-
         }
 
         if (event.data.to.hasOwnProperty('Vacation_Setting'))
@@ -672,78 +578,6 @@ async function onEventCallback(event) {
             } // from != to
         } 
         
-        if (event.data.to.hasOwnProperty('k_factor'))
-        {
-            // Event seems to be trigger twice, the second one with same value 'from' and 'to'
-            if (event.data.from['k_factor'] != event.data.to['k_factor'])
-            {
-                const newK = event.data.to['k_factor'];
-
-                if(event.data.state.hasOwnProperty('options'))
-                    event.data.state.options['k_factor'] = newK;
-                else
-                    event.data.state.options = {k_factor: newK};
-
-                // Sent the new value to the device so it will be saved on nvm
-                const endpointGeneral= event.data.device.getEndpoint(GENERAL_EP);
-                await endpointGeneral.write('genAnalogValue',  {presentValue: newK});
-            } // from != to
-
-        } 
-        
-        if (event.data.to.hasOwnProperty('upstream_pressure_calibration')) {
-            // Event seems to be trigger twice, the second one with same value 'from' and 'to'
-            if (event.data.from['upstream_pressure_calibration'] != event.data.to['upstream_pressure_calibration'])
-            {
-                const newCalibration = event.data.to['upstream_pressure_calibration'];
-
-                if(event.data.state.hasOwnProperty('options'))
-                    event.data.state.options['upstream_pressure_calibration'] = newCalibration;
-                else
-                    event.data.state.options = {upstream_pressure_calibration: newCalibration};
-
-                // Sent the new value to the device so it will be saved on nvm
-                const endpointIntakeOut = event.data.device.getEndpoint(INTAKE_OUT_EP);
-                await endpointIntakeOut.write('genAnalogValue',  {presentValue: newCalibration});
-            } // from != to
-
-        } // has k_factor
-
-        if (event.data.to.hasOwnProperty('downstream_pressure_calibration')) {
-            // Event seems to be trigger twice, the second one with same value 'from' and 'to'
-            if (event.data.from['downstream_pressure_calibration'] != event.data.to['downstream_pressure_calibration'])
-            {
-                const newCalibration = event.data.to['downstream_pressure_calibration'];
-
-                if(event.data.state.hasOwnProperty('options'))
-                    event.data.state.options['downstream_pressure_calibration'] = newCalibration;
-                else
-                    event.data.state.options = {downstream_pressure_calibration: newCalibration};
-
-                // Sent the new value to the device so it will be saved on nvm
-                const endpointExtractIn    = event.data.device.getEndpoint(EXTRACT_IN_EP);
-                await endpointExtractIn.write('genAnalogValue',  {presentValue: newCalibration});
-            } // from != to
-
-        } // has k_factor
-
-        if (event.data.to.hasOwnProperty('water_level_calibration')) {
-            // Event seems to be trigger twice, the second one with same value 'from' and 'to'
-            if (event.data.from['water_level_calibration'] != event.data.to['water_level_calibration'])
-            {
-                const newCalibration = event.data.to['water_level_calibration'];
-
-                if(event.data.state.hasOwnProperty('options'))
-                    event.data.state.options['water_level_calibration'] = newCalibration;
-                else
-                    event.data.state.options = {water_level_calibration: newCalibration};
-
-                // Sent the new value to the device so it will be saved on nvm
-                const endpointSupplyIn    = event.data.device.getEndpoint(SUPPLY_IN_EP);
-                await endpointSupplyIn.write('genAnalogValue',  {presentValue: newCalibration});
-            } // from != to
-
-        } // has k_factor
 
     }  //deviceOptionsChanged
 }
@@ -755,12 +589,11 @@ const definition = {
     model: 'AldesMonitor',
     vendor: 'AkiraCorp',
     description: 'VMC ALDES Inspirair Top Monitor Device https://github.com/akira215/zVMC',
-    fromZigbee: [fz_Filters, fz_FlowSettings, fz_Temperatures/*fromZigbee_Metering, fromZigbee_kFactor, fromZigbee_Pressure, fromZigbee_Level, fz.temperature*/],
-    toZigbee: [tz_VMC/*toZigbee_zTank*/],
-    exposes: [ ...genVMC()],
-    options:[optionTempoFilter(), optionVacationSetting(), optionDailySetting(), optionPushButtonSetting(),optionBoostSetting(), optionMaxSpeedSetting(),
-                    /*genWaterMeterOptions(), genUpstreamPressureOptions(), 
-                    genDownstreamPressureOptions(), genWaterLevelOptions()*/],
+    fromZigbee: [ fz_Setpoint, fz_Filters, fz_Tbypass, fz_FlowSettings, fz_Temperatures ],
+    toZigbee: [ tz_VMC ],
+    exposes: [ ...genVMC() ],
+    options:[ optionTbypassSetting(), optionVacationSetting(), optionDailySetting(), 
+            optionPushButtonSetting(),optionBoostSetting(), optionMaxSpeedSetting(), ],
     configure: async (device, coordinatorEndpoint, logger) => {
 
         //logger.info(`*********zVMC.js **************** Configure`);
@@ -777,8 +610,41 @@ const definition = {
         //await reporting.bind(endpointIntakeOut,      coordinatorEndpoint, ['msPressureMeasurement'] );
         //await reporting.bind(endpointExtractIn,    coordinatorEndpoint, ['msPressureMeasurement'] );
         //await reporting.bind(endpointSupplyIn,    coordinatorEndpoint, ['msRelativeHumidity']);
-        
+    
 
+        // Setting reportings when hitting configure button ///////////////////////////////////////////////////////////////////
+        
+        //Current Level
+        const payloadCurrentLevel = [
+                {
+                    attribute: { ID: ATTR_CURRENT_LEVEL_ID, type: DataType.uint16 },
+                    minimumReportInterval: 5,
+                    maximumReportInterval: constants.repInterval.HOUR, 
+                    reportableChange: 1, // unit
+                },
+        ];
+        await endpointGeneral.configureReporting('genMultistateValue', payloadCurrentLevel, manufCode.zVmc);
+        
+        // Reporting Bypass 
+        const payloadSeasonDetection = [
+                {
+                    attribute: { ID: ATTR_SEASON_DETECTION_ID, type: DataType.uint16 },
+                    minimumReportInterval: constants.repInterval.MINUTE,
+                    maximumReportInterval: constants.repInterval.MAX, //cannot exceed 65535
+                    reportableChange: 1, // unit
+                },
+        ];
+        
+        //await reporting.bind(endpointGeneral, coordinatorEndpoint, ['genAnalogInput']);
+        await endpointGeneral.configureReporting('genAnalogInput', payloadSeasonDetection, manufCode.zVmc);
+        await endpointGeneral.configureReporting('genAnalogInput', [{
+                    attribute: {ID: 0x0055, type: DataType.single},
+                    minimumReportInterval: 2,
+                    maximumReportInterval: constants.repInterval.HOUR,
+                    reportableChange: 1,
+                }]);
+
+        // Reporting Temperatures
         const payloadTemperature = [
                 {
                     attribute: {ID: 0, type: DataType.int16},
@@ -788,58 +654,53 @@ const definition = {
                     reportableChange: 10, // temperature are x100 so 10 is 0.1°C
                 },
         ];
-
-        const payloadFilter = [
-                {
-                    attribute: {ID: ATTR_FILTER_STATE_ID, type: DataType.uint16, },
-                    //attribute: 'measuredValue',
-                    minimumReportInterval: constants.repInterval.HOUR,
-                    maximumReportInterval: 65500, //cannot exceed 65535
-                    reportableChange: 1, // days
-                },
-        ];
-/*
-        const payloadPressure = [
-                {
-                    attribute: {ID: 0, type: DataType.int16},
-                    //attribute: 'measuredValue',
-                    minimumReportInterval: 2,
-                    maximumReportInterval: constants.repInterval.HOUR,
-                    reportableChange: 10,
-                },
-            ];
-        
-        const payloadWaterLevel = [
-                {
-                    attribute: {ID: 0, type: DataType.uint16},
-                    //attribute: 'measuredValue',
-                    minimumReportInterval: 10,
-                    maximumReportInterval: constants.repInterval.HOUR,
-                    reportableChange: 1,
-                },
-            ];
-*/
-        //await endpointGeneral.configureReporting('msFlowMeasurement', payloadFilter, manufCode.zVmc);
         await endpointIntakeOut.configureReporting('msTemperatureMeasurement', payloadTemperature);
         await endpointExtractIn.configureReporting('msTemperatureMeasurement', payloadTemperature);
         await endpointSupplyIn.configureReporting('msTemperatureMeasurement', payloadTemperature);
         await endpointExhaustOut.configureReporting('msTemperatureMeasurement', payloadTemperature);
 
-        // trigger a read k_factor at startup to update the k_factor from the saved state
-        //await endpointGeneral.read('genAnalogValue', ['presentValue']);
-        //await endpointIntakeOut.read('genAnalogValue', ['presentValue']);
-        //await endpointExtractIn.read('genAnalogValue', ['presentValue']);
-        //await endpointSupplyIn.read('genAnalogValue', ['presentValue']);
+        // Airflow
+        const payloadAirflow = [
+                {
+                    attribute: {ID: 0x0055, type: DataType.single},
+                    minimumReportInterval: 5,
+                    maximumReportInterval: constants.repInterval.HOUR,
+                    reportableChange: 5,
+                },
+        ];
+        await endpointExtractIn.configureReporting('genAnalogValue', payloadAirflow);
+        await endpointSupplyIn.configureReporting('genAnalogValue', payloadAirflow);
 
-        // read value on start up
-        //await endpointGeneral.read('msFlowMeasurement', ['measuredValue']);
-        //await endpointIntakeOut.read('msPressureMeasurement', ['measuredValue']);
-        //await endpointExtractIn.read('msPressureMeasurement', ['measuredValue']);
-        //await endpointSupplyIn.read('msRelativeHumidity', ['measuredValue']);
+        //Filters
+        const payloadFilter = [
+                {
+                    attribute: { ID: ATTR_FILTER_STATE_ID, type: DataType.uint16 },
+                    minimumReportInterval: constants.repInterval.MINUTES_10,
+                    maximumReportInterval: constants.repInterval.MAX, //cannot exceed 65535
+                    reportableChange: 1, // unit
+                },
+        ];
+        await endpointGeneral.configureReporting('msFlowMeasurement', payloadFilter, manufCode.zVmc);
 
-        await endpointGeneral.read('msFlowMeasurement', [ATTR_TEMPO_FILTER_ID, ATTR_FILTER_STATE_ID], manufCode.zVmc); // Filters
+
+        // Read values when hitting configure button ///////////////////////////////////////////////////////////////////
+       
+        // Current level
+        await endpointGeneral.read('genMultistateValue', [ATTR_CURRENT_LEVEL_ID], manufCode.zVmc);
+        
+        // Filters
+        await endpointGeneral.read('msFlowMeasurement', [ATTR_TEMPO_FILTER_ID, ATTR_FILTER_STATE_ID], manufCode.zVmc);
+
+        // Speed settings
         await endpointGeneral.read('genAnalogValue', [ATTR_VACATION_LEVEL_ID, ATTR_DAILY_LEVEL_ID, 
-                        ATTR_PUSHBUTTON_LEVEL_ID, ATTR_BOOST_LEVEL_ID, ATTR_MAXSPEED_LEVEL_ID ], manufCode.zVmc); // Filters
+                        ATTR_PUSHBUTTON_LEVEL_ID, ATTR_BOOST_LEVEL_ID, ATTR_MAXSPEED_LEVEL_ID ], manufCode.zVmc); 
+
+        
+        // Bypass
+        await endpointGeneral.read('genAnalogInput', ['presentValue']);
+        await endpointGeneral.read('genAnalogInput', [ATTR_SEASON_DETECTION_ID, ATTR_BYPASS_TEMPERATURE_ID], manufCode.zVmc);
+
+        // Temperatures
         await endpointIntakeOut.read('msTemperatureMeasurement', ['measuredValue']);
         await endpointExtractIn.read('msTemperatureMeasurement', ['measuredValue']);
         await endpointSupplyIn.read('msTemperatureMeasurement', ['measuredValue']);

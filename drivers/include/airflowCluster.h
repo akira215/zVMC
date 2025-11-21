@@ -10,7 +10,9 @@
 #include "zbAnalogValueCluster.h"
 #include "aldesDriver.h"
 
-// Store current airflow
+/// @brief Store current airflow
+/// @brief AnalogValueCluster
+/// @param PresentValue airflow in m3/h
 class AirflowCluster: public ZbAnalogValueCluster
 {
 
@@ -20,7 +22,7 @@ public:
     // Called when Modbus is sending data
     void setAirflow(int16_t flowrate) {
         float_t flow = static_cast<float_t>(flowrate);
-        ESP_LOGW(ZCLUSTER_TAG, "set airflow : %f", 
+        ESP_LOGV(ZCLUSTER_TAG, "set airflow : %f", 
                         flow);
         // will be read as uint16_t
       	setAttribute(ESP_ZB_ZCL_ATTR_ANALOG_VALUE_PRESENT_VALUE_ID,

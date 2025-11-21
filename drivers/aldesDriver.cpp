@@ -16,22 +16,11 @@
 static const char *ALDES_TAG = "AldesDriver";
 
 
-// Static event handler
-/*
-void AldesDriver::ads1115_event_handler(uint16_t input, double value)
-{
-    ESP_LOGV(ALDES_TAG, "Callback Main Ads1115 input: %d - value: %f", input-4, value);
-
-    // Post event to update the attribute of concerning registered clusters
-    //AldesDriver::getInstance().postEvent(input-4, value);
-
-}
-    */
 
 // Event handler for periodic soft task
 void AldesDriver::query_device_fast()
 {
-   
+    ESP_LOGI(ALDES_TAG, "Reading current state");
     getBypassPosition();
     getTemperaturesAndFanSpeed();
     getCurrentState();
@@ -41,6 +30,8 @@ void AldesDriver::query_device_fast()
 // Event handler for periodic soft task
 void AldesDriver::query_device_slow()
 {
+    ESP_LOGI(ALDES_TAG, "Reading low parameters");
+
     getRegulationParams();
     getFilterTimerState();  //
     getSeasonDetection();  
@@ -464,6 +455,7 @@ void AldesDriver::getCurrentState()
     {
         _data.current_level = state;
         _data.requester = state.getDataFrom(2);
+        postEvent(AldesModbus::REG_CURRENT_LEVEL, _data.current_level);
     }
     
     ESP_LOGV(ALDES_TAG, "------Current State-----");
@@ -497,7 +489,7 @@ void AldesDriver::setUserLevel(uint8_t lvl)
                                             AldesModbus::REG_USER_LEVEL,
                                             usr_lvl);
     if (usr_lvl.getSize() > 0)
-        ESP_LOGD(ALDES_TAG, "user level : %d", (uint16_t)usr_lvl);
+        ESP_LOGI(ALDES_TAG, "user level : %d", (uint16_t)usr_lvl);
 }
 
 void AldesDriver::setFilterTimer(uint16_t hours)
@@ -512,7 +504,7 @@ void AldesDriver::setFilterTimer(uint16_t hours)
     {
         _data.filter_state_days = hours;
         retry = CONFIG_WRITE_RETRY;
-        ESP_LOGW(ALDES_TAG, "Filter state set to %d ", hours);
+        ESP_LOGI(ALDES_TAG, "Filter state set to %d ", hours);
     } else {
         if (retry){
             retry--;
@@ -535,7 +527,7 @@ void AldesDriver::setFilterTempo(uint16_t months)
     {
         _data.tempo_filter = months;
         retry = CONFIG_WRITE_RETRY;
-        ESP_LOGW(ALDES_TAG, "Filter tempo set to %d months", months);
+        ESP_LOGI(ALDES_TAG, "Filter tempo set to %d months", months);
     } else {
         if (retry){
             retry--;
@@ -558,7 +550,7 @@ void AldesDriver::setBypassTemperature (int16_t temperature)
     {
         _data.T_bypass_summer = temperature;
         retry = CONFIG_WRITE_RETRY;
-        ESP_LOGW(ALDES_TAG, "T° Bypass summer set to %d °C", temperature);
+        ESP_LOGI(ALDES_TAG, "T° Bypass summer set to %d °C", temperature);
     } else {
         if (retry){
             retry--;
@@ -581,7 +573,7 @@ void AldesDriver::setDemandPoint (uint16_t mode)
     {
         _data.demand_user = mode;
         retry = CONFIG_WRITE_RETRY;
-        ESP_LOGW(ALDES_TAG, "demand user set to %d", mode);
+        ESP_LOGI(ALDES_TAG, "demand user set to %d", mode);
     } else {
         if (retry){
             retry--;
@@ -607,7 +599,7 @@ void AldesDriver::setVacationLevel (uint16_t flowrate)
         _data.setting_MVE_vacation = flowrate;
         _data.setting_MVI_vacation = flowrate;
         retry = CONFIG_WRITE_RETRY;
-        ESP_LOGW(ALDES_TAG, "Vacation level set to %d m3/h", flowrate);
+        ESP_LOGI(ALDES_TAG, "Vacation level set to %d m3/h", flowrate);
     } else {
         if (retry){
             retry--;

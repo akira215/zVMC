@@ -14,10 +14,6 @@
 #include "airflowCluster.h"
 #include "flowSettingsCluster.h" 
 
-
-#include "waterPressureMeasCluster.h"
-#include "waterLevelMeasCluster.h"
-
 #include "zbOtaClusterClient.h"
 
 #include "zbHaCluster.h"
@@ -84,10 +80,6 @@ private:
     AirflowCluster*             _airflowMVICluster  = nullptr;
 
     FlowSettingsCluster*        _flowSettingsCluster = nullptr;
-
-    WaterPressureMeasCluster*   _upstreamPressure   = nullptr;
-    WaterPressureMeasCluster*   _downstreamPressure = nullptr;
-    WaterLevelMeasCluster*      _waterLevel         = nullptr;
 
     ZbOtaClusterClient*         _otaCluster         = nullptr;
 

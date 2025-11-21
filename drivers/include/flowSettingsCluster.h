@@ -10,7 +10,13 @@
 #include "zbAnalogValueCluster.h"
 #include "aldesDriver.h"
 
-// Store remaining days prior to a filter change is required
+/// @brief Speed settings for each mode
+/// @brief AnalogValueCluster
+/// @param 0xff00 Vacation
+/// @param 0xff01 Daily
+/// @param 0xff02 Push Button
+/// @param 0xff03 Boost
+/// @param 0xff04 Max speed
 class FlowSettingsCluster: public ZbAnalogValueCluster
 {
     typedef enum {
@@ -77,7 +83,7 @@ public:
 
     // Called when Modbus is sending data
     void setVacationLevel(int16_t flowrate) {
-        ESP_LOGW(ZCLUSTER_TAG, "setVacationLevel : %d", 
+        ESP_LOGV(ZCLUSTER_TAG, "setVacationLevel : %d", 
                         flowrate);
         // will be read as uint16_t
       	setAttribute(ZB_VMC_ATTR_VACATION_LEVEL_ID,
@@ -126,31 +132,31 @@ public:
             switch(attrId) {
                 case ZB_VMC_ATTR_VACATION_LEVEL_ID: {
                     uint16_t newVal = *(static_cast<uint16_t*>(value));
-                    ESP_LOGW(ZCLUSTER_TAG, "New Vacation level : %d m3/h", 
+                    ESP_LOGD(ZCLUSTER_TAG, "New Vacation level : %d m3/h", 
                         newVal);
                     _aldes->setVacationLevel(newVal);
                     break; }
                 case ZB_VMC_ATTR_DAILY_LEVEL_ID: {
                     uint16_t newVal = *(static_cast<uint16_t*>(value));
-                    ESP_LOGW(ZCLUSTER_TAG, "New Daily level : %d m3/h", 
+                    ESP_LOGD(ZCLUSTER_TAG, "New Daily level : %d m3/h", 
                         newVal);
                     //_aldes->setFilterTempo(newTempo);
                     break; }
                 case ZB_VMC_ATTR_PUSHBUTTON_LEVEL_ID: {
                     uint16_t newVal = *(static_cast<uint16_t*>(value));
-                    ESP_LOGW(ZCLUSTER_TAG, "New Push Button level : %d m3/h", 
+                    ESP_LOGD(ZCLUSTER_TAG, "New Push Button level : %d m3/h", 
                         newVal);
                     //_aldes->setFilterTempo(newTempo);
                     break; }
                 case ZB_VMC_ATTR_BOOST_LEVEL_ID: {
                     uint16_t newVal = *(static_cast<uint16_t*>(value));
-                    ESP_LOGW(ZCLUSTER_TAG, "New Boost level : %d m3/h", 
+                    ESP_LOGD(ZCLUSTER_TAG, "New Boost level : %d m3/h", 
                         newVal);
                     //_aldes->setFilterTempo(newTempo);
                     break; }
                 case ZB_VMC_ATTR_MAXSPEED_LEVEL_ID: {
                     uint16_t newVal = *(static_cast<uint16_t*>(value));
-                    ESP_LOGW(ZCLUSTER_TAG, "New Max speed level : %d m3/h", 
+                    ESP_LOGD(ZCLUSTER_TAG, "New Max speed level : %d m3/h", 
                         newVal);
                     //_aldes->setFilterTempo(newTempo);
                     break; }

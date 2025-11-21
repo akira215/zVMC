@@ -10,27 +10,54 @@
 #include "zbMultistateValueCluster.h"
 #include "aldesDriver.h"
 
-// T° bypass summer of aldes VMC
+
+/// @brief Store user demand and read current state
+/// @brief MultistateValueCluster
+/// @param PresentValue current mode set by the user
 class SetPointCluster: public ZbMultistateValueCluster
 {
+    
+    typedef enum {
+        ZB_VMC_ATTR_CURRENT_LEVEL_ID   = 0xff00,
+    } zb_vmc_setpoint_attr_t;
+
     AldesDriver* _aldes = nullptr;
 
 public:
     SetPointCluster(AldesDriver* aldes):ZbMultistateValueCluster(false, 6),  _aldes(aldes) {
+        
+        uint16_t value = 0;
+        esp_zb_cluster_add_manufacturer_attr(_attr_list, 
+                                            getId(),
+                                            ZB_VMC_ATTR_CURRENT_LEVEL_ID,
+                                            CONFIG_MANUF_CODE,
+                                            ESP_ZB_ZCL_ATTR_TYPE_U16,
+                                            ESP_ZB_ZCL_ATTR_ACCESS_READ_ONLY |
+                                                ESP_ZB_ZCL_ATTR_ACCESS_REPORTING,
+                                            &value);
 
         registerEventHandler(&SetPointCluster::onAttrChange, this);
 
     };
 
-
     // Called when Modbus is sending data
     void setDemandPoint(int16_t mode) {
         
-        ESP_LOGW(ZCLUSTER_TAG, "setDemand : %d", 
+        ESP_LOGV(ZCLUSTER_TAG, "setDemand : %d", 
                         mode);
         // will be read as uint16_t
       	setAttribute(ESP_ZB_ZCL_ATTR_MULTI_VALUE_PRESENT_VALUE_ID,
                 &mode);
+    }
+
+    // Called when Modbus is sending data
+    void setCurrentLevel(int16_t lvl) {
+        
+        ESP_LOGV(ZCLUSTER_TAG, "current Level : %d", 
+                        lvl);
+        // will be read as uint16_t
+      	setAttribute(ZB_VMC_ATTR_CURRENT_LEVEL_ID,
+                &lvl, CONFIG_MANUF_CODE); 
     }
 
     // Called when Zigbee is sending data

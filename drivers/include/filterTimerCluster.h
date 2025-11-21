@@ -10,7 +10,10 @@
 #include "zbFlowMeasCluster.h"
 #include "aldesDriver.h"
 
-// Store remaining days prior to a filter change is required
+/// @brief Store elapsed days prior to a filter change is required
+/// @brief FlowMeasCluster
+/// @param 0xff00 Filter elapsed time in days
+/// @param 0xff01 Filter Tempo in month
 class FilterTimerCluster: public ZbFlowMeasCluster
 {
     typedef enum {

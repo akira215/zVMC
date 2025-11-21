@@ -29,12 +29,10 @@ Main::Main()
 {
     // Setting the log level for each module
     esp_log_level_set("Main_app", ESP_LOG_DEBUG);  // Put verbose to check available stack
-    esp_log_level_set("Modbus", ESP_LOG_DEBUG); 
-    esp_log_level_set("AldesDriver", ESP_LOG_VERBOSE);
+    esp_log_level_set("Modbus", ESP_LOG_INFO); 
+    esp_log_level_set("AldesDriver", ESP_LOG_INFO);
     esp_log_level_set("ZbNode", ESP_LOG_DEBUG); 
     esp_log_level_set("ZbEndpoint", ESP_LOG_VERBOSE);
-    esp_log_level_set("ZbNode", ESP_LOG_VERBOSE);
-    esp_log_level_set("TempDriver", ESP_LOG_VERBOSE);
     esp_log_level_set("ZbCluster", ESP_LOG_INFO);
     esp_log_level_set("EventLoop", ESP_LOG_DEBUG);
     esp_log_level_set("PersistedValue", ESP_LOG_VERBOSE); 
@@ -215,8 +213,10 @@ void Main::setup(void)
 
     _flowSettingsCluster    = new FlowSettingsCluster(_aldes);
 
-    _aldes->registerAldesHandler(&SetPointCluster::setDemandPoint, 
-                        _setPointCluster,AldesModbus::REG_DEMAND_USER);
+    //_aldes->registerAldesHandler(&SetPointCluster::setDemandPoint, 
+    //                    _setPointCluster,AldesModbus::REG_DEMAND_USER);
+    _aldes->registerAldesHandler(&SetPointCluster::setCurrentLevel, 
+                        _setPointCluster,AldesModbus::REG_CURRENT_LEVEL);
 
     _aldes->registerAldesHandler(&TSensorCluster::setTemperatureMeasuredValue, 
                         _TIntakeOut, AldesModbus::REG_T_INTAKE_AIR_OUT);
@@ -255,26 +255,14 @@ void Main::setup(void)
     _aldes->registerAldesHandler(&FlowSettingsCluster::setMaxSpeedLevel, 
                         _flowSettingsCluster,AldesModbus::REG_SETTING_MVE_MAX_SPEED); 
 
-    // Upstream channel 2
-    _upstreamPressure = new WaterPressureMeasCluster(2);
-    
-    // Downstream channel 3
-    _downstreamPressure = new WaterPressureMeasCluster(3);
-    
-    // WaterLevel channel 4
-    _waterLevel = new WaterLevelMeasCluster(4);
-    
 
     _timeClient = new ZbTimeClusterClient();
 
     ESP_LOGI(TAG,"---------------- Register ------------------------");
     
     ZbIdentifyCluster* identifyServer = new ZbIdentifyCluster();
-    ZbIdentifyCluster* identifyClient = new ZbIdentifyCluster(true);
-    ZbIdentifyCluster* identifyServer2 = new ZbIdentifyCluster(*identifyServer);
-    ZbIdentifyCluster* identifyServer3 = new ZbIdentifyCluster(*identifyServer);
-    ZbIdentifyCluster* identifyServer4 = new ZbIdentifyCluster(*identifyServer);
-    ZbIdentifyCluster* identifyServer5 = new ZbIdentifyCluster(*identifyServer);
+    //ZbIdentifyCluster* identifyClient = new ZbIdentifyCluster(true);
+
     
     // Attaching Clusters  ////////////////////////////////////////////////
     generalEp->addCluster(identifyServer);
@@ -286,25 +274,21 @@ void Main::setup(void)
     generalEp->addCluster(_setPointCluster);
     //generalEp->addCluster(_otaCluster);
 
-    intakeOutEp->addCluster(identifyServer2);
+    //intakeOutEp->addCluster(identifyServer2);
     intakeOutEp->addCluster(_TIntakeOut);
-    //intakeOutEp->addCluster(_upstreamPressure);
-    //intakeOutEp->addCluster(_upstreamPressure->getKfactorCluster());
 
-
-    extractInEp->addCluster(identifyServer3);
+    //extractInEp->addCluster(identifyServer3);
     extractInEp->addCluster(_TExtractIn);
     extractInEp->addCluster(_airflowMVECluster);
-    //extractInEp->addCluster(_downstreamPressure->getKfactorCluster());
 
-    supplyInEp->addCluster(identifyServer4);
+
+    //supplyInEp->addCluster(identifyServer4);
     supplyInEp->addCluster(_TSupplyIn);
     supplyInEp->addCluster(_airflowMVICluster);
-    //supplyInEp->addCluster(_waterLevel->getKfactorCluster());
     
-    exhaustOutEp->addCluster(identifyServer5);
+    //exhaustOutEp->addCluster(identifyServer5);
     exhaustOutEp->addCluster(_TExhaustOut);
-    //exhaustOutEp->addCluster(_timeClient);
+
 
     // Attaching Enpoints  ////////////////////////////////////////////////
     _zbDevice->addEndPoint(*generalEp);
@@ -313,14 +297,11 @@ void Main::setup(void)
     _zbDevice->addEndPoint(*supplyInEp);
     _zbDevice->addEndPoint(*exhaustOutEp);
     
-    
     // Get task handles from tasks names
     _eventLoopHandle = xTaskGetHandle( "ZbEventLoop" );
     _xButtonHandle = xTaskGetHandle( "button_task" ); 
     _mbHandle = xTaskGetHandle( "mbc_ser_master" ); 
     
-    //driver_init();
-
     ESP_LOGI(TAG,"---------------- Starting ZbDevice ------------------------");
     //_zbDevice->setReadyCallback(initWhenJoined);
     
