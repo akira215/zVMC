@@ -3,7 +3,7 @@ Driving ALDES controlled mechanical ventilation using Modbus, embedded sofware o
 
 # Description
 
-This repository contain all the development for an electronic device that will monitor a water tank (such as rain collect tank) using zigbee to transmit data to a coordinator. It contains: 
+This repository contain all the development for an electronic device that will monitor ALDES VMC Inspirair using zigbee to transmit data to a coordinator. It contains: 
  * A PCB design [PCB design](PCB/README.md)
  * An enclosure design to be printed in 3D [Enclosure design](3Dprint/README.md)
  * Source code of the embedded software on the board (in an ESP32C6 µC)
