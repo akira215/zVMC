@@ -91,6 +91,8 @@ function genVMC() {
             exposes.enum('Detected_Season', ea.STATE_GET, detectedSeasonEnum)
                 .withDescription('If Tavg > 19°C or Tmax > 28°C and Tmin > 7° : Summer / If Tavg <19°C or Tmax<28°C : Winter (24h)'),  
             exposes.numeric('Filter_Elapsed_Days', ea.ALL)
+                .withValueMin(0)
+                .withValueMax(1000)
                 .withDescription('Elapsed days since filters replacement')
                 .withUnit('days'),
             exposes.numeric('Tempo_Filter', ea.ALL)
